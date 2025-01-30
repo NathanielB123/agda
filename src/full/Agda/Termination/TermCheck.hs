@@ -1230,6 +1230,14 @@ makeCM ncols nrows matrix = CallMatrix $
 pattern TerminationDummy :: Term
 pattern TerminationDummy = Dummy "TERMINATION_DUMMY" []
 
+isBase :: Term -> Bool
+isBase TerminationDummy = True
+isBase (Con _ _ []) = True
+isBase _ = False
+
+pattern BaseCon :: Term
+pattern BaseCon <- (isBase -> True)
+
 -- | 'addDummy' adds a row and column to the call matrix, simulating the effect
 -- of both functions having extra base-constructor "dummy" arguments, which
 -- can aid termination checking in some cases.
@@ -1246,7 +1254,7 @@ addDummy es pats (nrows, ncols, m) = do
   -- TODO: Cursed hack repurposing @Dummy@ in what I'm sure is an unintended way
   let base = Apply (Arg empty TerminationDummy)
   newRow <- traverse (compareElim base) pats
-  pure (nrows + 1, ncols + 1, newRow : zipWith (:) newCol m)
+  pure (nrows + 1, ncols + 1, (Order.le : newRow) : zipWith (:) newCol m)
 
 -- | 'addGuardedness' adds guardedness flag in the upper left corner
 -- (0,0).
@@ -1399,8 +1407,7 @@ compareTerm' v mp@(Masked m p) = do
         v           -> compareTerm' v mp
 
     -- Treat base constructors as strictly smaller than non-base constructors
-    (Con _ _ [], ConP _ _ ps) | not (null ps) -> return Order.lt
-    (TerminationDummy, ConP _ _ ps) | not (null ps) -> return Order.lt
+    (BaseCon, ConP _ _ ps) | not (null ps) -> return Order.lt
 
     -- Andreas, 2011-04-19 give subterm priority over matrix order
 
@@ -1411,8 +1418,7 @@ compareTerm' v mp@(Masked m p) = do
       let ts = fromMaybe __IMPOSSIBLE__ $ allApplyElims es in
       compareConArgs ts ps
 
-    (Con _ _ [], _) -> return Order.le
-    (TerminationDummy, _) -> return Order.le
+    (BaseCon, _) -> return Order.le
 
     -- new case for counting constructors / projections
     -- register also increase
