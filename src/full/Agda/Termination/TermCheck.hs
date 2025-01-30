@@ -1140,7 +1140,7 @@ compareArgs es = do
     , nest 2 $ text $ "projsCallee = " ++ prettyShow projsCallee
     , nest 2 $ text $ "guardedness of call: " ++ prettyShow guardedness
     ]
-  addGuardedness guardedness <$> addDummy es (size es, size pats, matrix)
+  addGuardedness guardedness <$> addDummy es pats (size es, size pats, matrix)
 
 -- | Traverse patterns from left to right.
 --   When we come to a projection pattern,
@@ -1227,16 +1227,25 @@ makeCM :: Int -> Int -> [[Order]] -> CallMatrix
 makeCM ncols nrows matrix = CallMatrix $
   Matrix.fromLists (Matrix.Size nrows ncols) matrix
 
+pattern TerminationDummy :: Term
+pattern TerminationDummy = Dummy "TERMINATION_DUMMY" []
+
 -- | 'addDummy' adds a row and column to the call matrix, simulating the effect
 -- of both functions having extra base-constructor "dummy" arguments, which
 -- can aid termination checking in some cases.
 -- See issue #7693
-addDummy :: [Elim] -> (Int, Int, [[Order]]) -> TerM (Int, Int, [[Order]])
-addDummy es (nrows, ncols, m) = do
+addDummy
+  :: [Elim]
+  -> [Masked DeBruijnPattern]
+  -> (Int, Int, [[Order]])
+  -> TerM (Int, Int, [[Order]])
+addDummy es pats (nrows, ncols, m) = do
   -- TODO: Is there a more sensible index to use here?
   let discard = notMasked (varP (DBPatVar "_" $ -1))
-  newCol <- traverse (\e -> compareElim e discard) es
-  let newRow = replicate (ncols + 1) Order.le
+  newCol <- traverse (`compareElim` discard) es
+  -- TODO: Cursed hack repurposing @Dummy@ in what I'm sure is an unintended way
+  let base = Apply (Arg empty TerminationDummy)
+  newRow <- traverse (compareElim base) pats
   pure (nrows + 1, ncols + 1, newRow : zipWith (:) newCol m)
 
 -- | 'addGuardedness' adds guardedness flag in the upper left corner
@@ -1389,6 +1398,10 @@ compareTerm' v mp@(Masked m p) = do
         Lit{}       -> return Order.unknown
         v           -> compareTerm' v mp
 
+    -- Treat base constructors as strictly smaller than non-base constructors
+    (Con _ _ [], ConP _ _ ps) | not (null ps) -> return Order.lt
+    (TerminationDummy, ConP _ _ ps) | not (null ps) -> return Order.lt
+
     -- Andreas, 2011-04-19 give subterm priority over matrix order
 
     (Con{}, ConP c _ ps) | any (isSubTerm v . namedArg) ps ->
@@ -1399,6 +1412,7 @@ compareTerm' v mp@(Masked m p) = do
       compareConArgs ts ps
 
     (Con _ _ [], _) -> return Order.le
+    (TerminationDummy, _) -> return Order.le
 
     -- new case for counting constructors / projections
     -- register also increase
