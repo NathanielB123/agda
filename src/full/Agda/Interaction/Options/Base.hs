@@ -101,6 +101,7 @@ module Agda.Interaction.Options.Base
     , lensOptPrintPatternSynonyms
     , lensOptFastReduce
     , lensOptCallByName
+    , lensOptMutualRewriting
     , lensOptConfluenceCheck
     , lensOptCohesion
     , lensOptFlatSplit
@@ -172,6 +173,7 @@ module Agda.Interaction.Options.Base
     , optLargeIndices
     , optForcedArgumentRecursion
     -- * Non-boolean accessors to 'PragmaOptions'
+    , optMutualRewriting
     , optConfluenceCheck
     , optCubical
     , optInstanceSearchDepth
@@ -417,6 +419,7 @@ optUseUnicode                = collapseDefault . _optUseUnicode
 
 -- Extra trivial accessors (keep in alphabetical order)
 
+optMutualRewriting     :: PragmaOptions -> _
 optConfluenceCheck     :: PragmaOptions -> _
 optCubical             :: PragmaOptions -> _
 optInstanceSearchDepth :: PragmaOptions -> _
@@ -427,6 +430,7 @@ optTerminationDepth    :: PragmaOptions -> _
 optVerbose             :: PragmaOptions -> _
 optWarningMode         :: PragmaOptions -> _
 
+optMutualRewriting     = _optMutualRewriting
 optConfluenceCheck     = _optConfluenceCheck
 optCubical             = _optCubical
 optInstanceSearchDepth = _optInstanceSearchDepth
@@ -614,6 +618,9 @@ lensOptFastReduce f o = f (_optFastReduce o) <&> \ i -> o{ _optFastReduce = i }
 lensOptCallByName :: Lens' PragmaOptions _
 lensOptCallByName f o = f (_optCallByName o) <&> \ i -> o{ _optCallByName = i }
 
+lensOptMutualRewriting :: Lens' PragmaOptions _
+lensOptMutualRewriting f o = f (_optMutualRewriting o) <&> \ i -> o{ _optMutualRewriting = i }
+
 lensOptConfluenceCheck :: Lens' PragmaOptions _
 lensOptConfluenceCheck f o = f (_optConfluenceCheck o) <&> \ i -> o{ _optConfluenceCheck = i }
 
@@ -755,6 +762,7 @@ defaultPragmaOptions = PragmaOptions
   , _optPrintPatternSynonyms      = Default
   , _optFastReduce                = Default
   , _optCallByName                = Default
+  , _optMutualRewriting           = Default
   , _optConfluenceCheck           = Nothing
   , _optCohesion                  = Default
   , _optFlatSplit                 = Default
@@ -1293,6 +1301,9 @@ terminationDepthFlag s o =
        return $ o { _optTerminationDepth = CutOff $ k-1 }
     where usage = throwError "argument to termination-depth should be >= 1"
 
+mutualRewritingFlag :: Bool -> Flag PragmaOptions
+mutualRewritingFlag f o = return $ o { _optMutualRewriting = Value f }
+
 confluenceCheckFlag :: ConfluenceCheck -> Flag PragmaOptions
 confluenceCheckFlag f o = return $ o { _optConfluenceCheck = Just f }
 
@@ -1596,7 +1607,9 @@ pragmaOptions = concat
   , pragmaFlag      "rewriting" lensOptRewriting
                     "enable declaration and use of REWRITE rules" ""
                     $ Just "disable declaration and use of REWRITE rules"
-  , [ Option []     ["local-confluence-check"] (NoArg $ confluenceCheckFlag LocalConfluenceCheck)
+  , [ Option []     ["mutual-rewriting"] (NoArg $ mutualRewritingFlag True)
+                    "enable REWRITE rules in mutual blocks"
+    , Option []     ["local-confluence-check"] (NoArg $ confluenceCheckFlag LocalConfluenceCheck)
                     "enable checking of local confluence of REWRITE rules"
     , Option []     ["confluence-check"] (NoArg $ confluenceCheckFlag GlobalConfluenceCheck)
                     "enable global confluence checking of REWRITE rules (more restrictive than --local-confluence-check)"

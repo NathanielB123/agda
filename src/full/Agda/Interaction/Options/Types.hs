@@ -193,6 +193,10 @@ data PragmaOptions = PragmaOptions
       -- ^ Use the Agda abstract machine ('fastReduce')?
   , _optCallByName                :: WithDefault 'False
       -- ^ Use call-by-name instead of call-by-need.
+  , _optMutualRewriting           :: WithDefault 'False
+      -- ^ Can rewrite rules occur in mutual blocks?
+      -- i.e. Re-enables the unsound behaviour from
+      -- https://github.com/agda/agda/issues/6643
   , _optConfluenceCheck           :: Maybe ConfluenceCheck
       -- ^ Check confluence of rewrite rules?
   , _optCohesion                  :: WithDefault 'False

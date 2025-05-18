@@ -88,6 +88,7 @@ import qualified Agda.Utils.SmallSet as SmallSet
 
 import Agda.Utils.Impossible
 import Agda.Utils.Either
+import Agda.Utils.WithDefault (collapseDefault)
 
 requireOptionRewriting :: TCM ()
 requireOptionRewriting =
@@ -196,14 +197,21 @@ checkRewriteRule q = runMaybeT $ setCurrentRange q do
   -- for a type signature whose body has not been type-checked yet.
   when (isEmptyFunction $ theDef def) $
     illegalRule BeforeFunctionDefinition
+
   -- Issue 6643: Also check that there are no mututal definitions
   -- that are not yet defined.
-  whenJustM (asksTC envMutualBlock) \ mb -> do
+
+  -- This error is very annoying if we are postulating a set of equations
+  -- mutually with some datatypes.
+  -- It is technically always possible to work around it by manually
+  -- transporting, but in use-cases when we are postulating equations anyway,
+  -- we don't really get any safety from this. It's just annoying.
+  whenM (not . collapseDefault . optMutualRewriting <$> pragmaOptions) do
+    whenJustM (asksTC envMutualBlock) \ mb -> do
     qs <- mutualNames <$> lookupMutualBlock mb
     when (Set.member q qs) $ forM_ qs $ \r -> do
       whenM (isEmptyFunction . theDef <$> getConstInfo r) $
         illegalRule $ BeforeMutualFunctionDefinition r
-
 
   -- Get rewrite rule (type of q).
   TelV gamma1 core <- telView $ defType def
