@@ -142,11 +142,13 @@ instance (BoundAndUsed x, BoundAndUsed p, BoundAndUsed e) => BoundAndUsed (Rewri
 
 instance BoundAndUsed LetBinding where
   boundAndUsed = \ case   -- Note: binder last since it's not recursive
-    LetBind _ _ x ty e     -> boundAndUsed ((ty, e), x)
-    LetAxiom _ _ x ty      -> boundAndUsed (ty, x)
-    LetPatBind _ _ p e     -> boundAndUsed (e, p)
-    LetApply _ _ _ app _ _ -> boundAndUsed app
-    LetOpen{}              -> mempty
+    LetBind _ _ x ty e       -> boundAndUsed ((ty, e), x)
+    LetAxiom _ _ x ty        -> boundAndUsed (ty, x)
+    LetPatBind _ _ p e       -> boundAndUsed (e, p)
+    LetApply _ _ _ app _ _   -> boundAndUsed app
+    LetGeneralize _ _ _ n ty -> boundAndUsed (n, ty)
+      -- I don't think we need to do anything with the Set QName because we will extract names used in the type from the type itself
+    LetOpen{}                -> mempty
 
 instance BoundAndUsed LamBinding where
   boundAndUsed (DomainFree _ b) = boundAndUsed b
@@ -161,6 +163,9 @@ instance BoundAndUsed name => BoundAndUsed (Binder' name) where
 
 instance BoundAndUsed BindName where
   boundAndUsed x = singleBind (unBind x)
+
+instance BoundAndUsed QName where
+  boundAndUsed x = singleBind (qnameName x)
 
 instance BoundAndUsed e => BoundAndUsed (Pattern' e) where
   boundAndUsed = \ case

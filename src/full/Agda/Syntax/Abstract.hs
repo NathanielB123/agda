@@ -110,9 +110,9 @@ data Expr
   | Let  ExprInfo (List1 LetBinding) Expr
                                        -- ^ @let bs in e@.
   | Rec  KwRange ExprInfo RecordAssigns
-      -- ^ Record construction.  The 'KwRange' is for the @record@ kewyword.
+      -- ^ Record construction.  The 'KwRange' is for the @record@ keyword.
   | RecUpdate KwRange ExprInfo Expr Assigns
-      -- ^ Record update.  The 'KwRange' is for the @record@ kewyword.
+      -- ^ Record update.  The 'KwRange' is for the @record@ keyword.
   | RecWhere KwRange ExprInfo [LetBinding] Assigns
     -- ^ @record where@ expression, the set of names is the set of names
     -- that should become record fields. The 'KwRange' is for the
@@ -270,6 +270,8 @@ data LetBinding
     -- The @ImportDirective@ is for highlighting purposes.
   | LetOpen ModuleInfo ModuleName ImportDirective
     -- ^ only for highlighting and abstractToConcrete
+  | LetGeneralize (Set QName) DefInfo ArgInfo QName Type
+    -- ^ The first argument is the (possibly empty) set of generalizable variables used in the type.
   deriving (Show, Eq, Generic)
 
 -- | Only 'Axiom's.
@@ -766,11 +768,12 @@ instance HasRange WhereDeclarations where
   getRange (WhereDecls _ _ ds) = getRange ds
 
 instance HasRange LetBinding where
-  getRange (LetBind i _ _ _ _)     = getRange i
-  getRange (LetAxiom i _ _ _)      = getRange i
-  getRange (LetPatBind i _ _ _)    = getRange i
-  getRange (LetApply i _ _ _ _ _)  = getRange i
-  getRange (LetOpen  i _ _)        = getRange i
+  getRange (LetBind i _ _ _ _)       = getRange i
+  getRange (LetAxiom i _ _ _)        = getRange i
+  getRange (LetPatBind i _ _ _)      = getRange i
+  getRange (LetApply i _ _ _ _ _)    = getRange i
+  getRange (LetOpen  i _ _)          = getRange i
+  getRange (LetGeneralize _ i _ _ _) = getRange i
 
 -- setRange for patterns applies the range to the outermost pattern constructor
 instance SetRange (Pattern' a) where
@@ -918,11 +921,12 @@ instance KillRange WhereDeclarations where
   killRange (WhereDecls a b c) = killRangeN WhereDecls a b c
 
 instance KillRange LetBinding where
-  killRange (LetBind i info a b c)  = killRangeN LetBind i info a b c
-  killRange (LetAxiom i a b c)      = killRangeN LetAxiom i a b c
-  killRange (LetPatBind i ai a b)   = killRangeN LetPatBind i ai a b
-  killRange (LetApply i a b c d e)  = killRangeN LetApply i a b c d e
-  killRange (LetOpen i x dir)       = killRangeN LetOpen  i x dir
+  killRange (LetBind i info a b c)    = killRangeN LetBind i info a b c
+  killRange (LetAxiom i a b c)        = killRangeN LetAxiom i a b c
+  killRange (LetPatBind i ai a b)     = killRangeN LetPatBind i ai a b
+  killRange (LetApply i a b c d e)    = killRangeN LetApply i a b c d e
+  killRange (LetOpen i x dir)         = killRangeN LetOpen  i x dir
+  killRange (LetGeneralize s i j x e) = killRangeN (LetGeneralize s) i j x e
 
 instance NFData Expr
 instance NFData ScopeCopyInfo

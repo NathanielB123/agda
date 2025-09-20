@@ -258,7 +258,7 @@ instance Hilite A.Expr where
       A.WithApp _r e es             -> hl e <> hl es
       A.Lam _r bs e                 -> hl bs <> hl e
       A.AbsurdLam _r _h             -> mempty
-      A.ExtendedLam _r _di er _q cs -> hl er <> hl cs -- No hilighting of generated extended lambda name!
+      A.ExtendedLam _r _di er _q cs -> hl er <> hl cs -- No highlighting of generated extended lambda name!
       A.Pi _r tel b                 -> hl tel <> hl b
       A.Generalized _qs e           -> hl e
       A.Fun _r a b                  -> hl a <> hl b
@@ -357,12 +357,13 @@ instance Hilite A.ModuleApplication where
 
 instance Hilite A.LetBinding where
   hilite = \case
-      A.LetBind    _r ai x t e     -> hl ai <> hl x <> hl t <> hl e
-      A.LetAxiom   _r ai x t       -> hl ai <> hl x <> hl t
-      A.LetPatBind _r ai p e       -> hl ai <> hl p  <> hl e
-      A.LetApply mi er x es _c dir -> hl mi <> hl er <> hl x <>
-                                      hl es <> hl dir
-      A.LetOpen mi x dir           -> hl mi <> hl x <> hl dir
+      A.LetBind    _r ai x t e          -> hl ai <> hl x <> hl t <> hl e
+      A.LetAxiom   _r ai x t            -> hl ai <> hl x <> hl t
+      A.LetPatBind _r ai p e            -> hl ai <> hl p  <> hl e
+      A.LetApply mi er x es _c dir      -> hl mi <> hl er <> hl x <>
+                                           hl es <> hl dir
+      A.LetOpen mi x dir                -> hl mi <> hl x <> hl dir
+      A.LetGeneralize _names _di ai x e -> hl ai <> hl x <> hl e
     where
     hl x = hilite x
 

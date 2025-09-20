@@ -1243,11 +1243,12 @@ instance Binder BindName where
   varsBoundIn x = singleton (unBind x)
 
 instance Binder A.LetBinding where
-  varsBoundIn (LetBind _ _ x _ _) = varsBoundIn x
-  varsBoundIn (LetAxiom _ _ x _)  = varsBoundIn x
-  varsBoundIn (LetPatBind _ _ p _)= varsBoundIn p
-  varsBoundIn LetApply{}          = empty
-  varsBoundIn LetOpen{}           = empty
+  varsBoundIn (LetBind _ _ x _ _)       = varsBoundIn x
+  varsBoundIn (LetAxiom _ _ x _)        = varsBoundIn x
+  varsBoundIn (LetPatBind _ _ p _)      = varsBoundIn p
+  varsBoundIn (LetGeneralize _ _ _ x _) = singleton $ qnameName x
+  varsBoundIn LetApply{}                = empty
+  varsBoundIn LetOpen{}                 = empty
 
 instance Binder a => Binder (FieldAssignment' a)
 instance Binder a => Binder (Arg a)

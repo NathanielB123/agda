@@ -194,6 +194,11 @@ recordConstructorType decls =
           ]) | abstract /= AbstractDef && macro /= MacroDef -> do
           mkLet d
 
+        -- Support generalisation in records
+        C.NiceGeneralize r p a t n e -> do
+          let foo = toAbstract d
+          mkLet (C.NiceGeneralize r p a t n e)
+
         C.NiceLoneConstructor{} -> failure
         C.NiceMutual{}        -> failure
         -- TODO: some of these cases might be __IMPOSSIBLE__
@@ -210,7 +215,6 @@ recordConstructorType decls =
         C.NiceDataDef{}       -> failure
         C.NiceRecDef{}        -> failure
         C.NicePatternSyn{}    -> failure
-        C.NiceGeneralize{}    -> failure
         C.NiceUnquoteDecl{}   -> failure
         C.NiceUnquoteDef{}    -> failure
         C.NiceUnquoteData{}   -> failure
@@ -1211,6 +1215,9 @@ recordWhereNames = finish <=< foldM decl st0 where
 
     pure $! ins this_pbs $! ins mod_pbs st0
 
+  decl st0 r@(A.LetGeneralize ns _ _ _ _) = do
+    error "No idea what this should do LOL"
+
 instance ToAbstract C.ModuleAssignment where
   type AbsOfCon C.ModuleAssignment = (A.ModuleName, Maybe A.LetBinding)
   toAbstract (C.ModuleAssignment m es i)
@@ -1792,6 +1799,10 @@ scopeCheckLetDef wh d = setCurrentRange d do
       singleton <$> checkModuleMacro LetApply LetOpenModule r
                       privateAccessInserted erased x modapp open dir
 
+    -- Support generalisation in lets
+    NiceGeneralize r p i tac x t -> 
+      singleton <$> abstractGeneralize A.LetGeneralize r p i tac x t
+
     _ -> notAValidLetBinding Nothing
 
     where
@@ -1888,6 +1899,22 @@ checkFieldArgInfo warn =
   where
     msg = if warn then Just "of field" else Nothing
 
+abstractGeneralize 
+  :: (Set A.QName -> DefInfo -> ArgInfo -> A.QName -> Type -> r) 
+  -> Range -> Access -> ArgInfo -> C.TacticAttribute -> C.Name -> C.Expr 
+  -> TCMT IO r
+abstractGeneralize con r p i tac x t = do
+  reportSLn "scope.decl" 30 $ "found nice generalize: " ++ prettyShow x
+  tac <- traverse (toAbstractCtx TopCtx) tac
+  t_ <- toAbstractCtx TopCtx t
+  let (s, t) = unGeneralized t_
+  reportSLn "scope.decl" 50 $ "generalizations: " ++ show (Set.toList s, t)
+  f <- getConcreteFixity x
+  y <- freshAbstractQName f x
+  bindName p GeneralizeName x y
+  let info = (mkDefInfo x f p ConcreteDef r) { defTactic = tac }
+  return $ con s info i y t
+
 instance ToAbstract NiceDeclaration where
   type AbsOfCon NiceDeclaration = Maybe A.Declaration
 
@@ -1922,17 +1949,8 @@ instance ToAbstract NiceDeclaration where
       -- check the postulate
       return $ singleton decl
 
-    C.NiceGeneralize r p i tac x t -> do
-      reportSLn "scope.decl" 30 $ "found nice generalize: " ++ prettyShow x
-      tac <- traverse (toAbstractCtx TopCtx) tac
-      t_ <- toAbstractCtx TopCtx t
-      let (s, t) = unGeneralized t_
-      reportSLn "scope.decl" 50 $ "generalizations: " ++ show (Set.toList s, t)
-      f <- getConcreteFixity x
-      y <- freshAbstractQName f x
-      bindName p GeneralizeName x y
-      let info = (mkDefInfo x f p ConcreteDef r) { defTactic = tac }
-      return $ singleton $ A.Generalize s info i y t
+    C.NiceGeneralize r p i tac x t -> 
+      singleton <$> abstractGeneralize A.Generalize r p i tac x t
 
   -- Fields
     C.NiceField r p a i tac x (Arg ai t) -> do

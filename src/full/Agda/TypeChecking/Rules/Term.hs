@@ -1972,7 +1972,7 @@ checkLetBinding' (A.LetApply i erased x modapp copyInfo dir) ret = do
   -- Any variables in the context that doesn't belong to the current
   -- module should go with the new module.
   -- Example: @f x y = let open M t in u@.
-  -- There are 2 @new@ variables, @x@ and @y@, going into the anonynous module
+  -- There are 2 @new@ variables, @x@ and @y@, going into the anonymous module
   -- @module _ (x : _) (y : _) = M t@.
   fv   <- getCurrentModuleFreeVars
   n    <- getContextSize
@@ -1990,6 +1990,31 @@ checkLetBinding' (A.LetApply i erased x modapp copyInfo dir) ret = do
     -- directive does contain "open public".
     dir{ publicOpen = Nothing }
   withAnonymousModule x new ret
+checkLetBinding' (A.LetGeneralize s i info x e) ret = do
+  reportSDoc "tc.decl.gen" 20 $ sep
+    [ "checking type signature of generalizable variable" <+> prettyTCM x <+> ":"
+    , nest 2 $ prettyTCM e
+    ]
+
+  -- Check the signature and collect the created metas.
+  (telNames, tGen) <-
+    generalizeType s $ locallyTC eGeneralizeMetas (const YesGeneralizeMeta) $
+      workOnTypes $ isType_ e
+  let n = length telNames
+
+  reportSDoc "tc.decl.gen" 10 $ sep
+    [ "checked type signature of generalizable variable" <+> prettyTCM x <+> ":"
+    , nest 2 $ prettyTCM tGen
+    ]
+
+  lang <- getLanguage
+  -- This is pretty inconsistent with above cases and so probably horribly
+  -- wrong... but lets try it!!!
+  addConstant x $ defaultDefn info x tGen lang $ 
+    GeneralizableVar $ SomeGeneralizableArgs n
+  ret
+
+  -- = error "IDK what this is even meant to do lol lmao"
 -- LetOpen and (WAS:) LetDeclaredVariable are only used for highlighting.
 checkLetBinding' A.LetOpen{} ret = ret
 
