@@ -1800,8 +1800,15 @@ scopeCheckLetDef wh d = setCurrentRange d do
                       privateAccessInserted erased x modapp open dir
 
     -- Support generalisation in lets
-    NiceGeneralize r p i tac x t -> 
-      singleton <$> abstractGeneralize A.LetGeneralize r p i tac x t
+    NiceGeneralize r p i tac x t -> do
+      reportSLn "scope.decl" 30 $ "found nice generalize: " ++ prettyShow x
+      tac <- traverse (toAbstractCtx TopCtx) tac
+      t_ <- toAbstractCtx TopCtx t
+      let (s, t) = unGeneralized t_
+      reportSLn "scope.decl" 50 $ "generalizations: " ++ show (Set.toList s, t)
+      fx <- getConcreteFixity x
+      y <- toAbstract (NewName LetBound $ mkBoundName x fx)
+      return $ singleton $ A.LetGeneralize s (LetRange $ getRange d) i y t 
 
     _ -> notAValidLetBinding Nothing
 
@@ -1949,8 +1956,17 @@ instance ToAbstract NiceDeclaration where
       -- check the postulate
       return $ singleton decl
 
-    C.NiceGeneralize r p i tac x t -> 
-      singleton <$> abstractGeneralize A.Generalize r p i tac x t
+    C.NiceGeneralize r p i tac x t -> do
+      reportSLn "scope.decl" 30 $ "found nice generalize: " ++ prettyShow x
+      tac <- traverse (toAbstractCtx TopCtx) tac
+      t_ <- toAbstractCtx TopCtx t
+      let (s, t) = unGeneralized t_
+      reportSLn "scope.decl" 50 $ "generalizations: " ++ show (Set.toList s, t)
+      f <- getConcreteFixity x
+      y <- freshAbstractQName f x
+      bindName p GeneralizeName x y
+      let info = (mkDefInfo x f p ConcreteDef r) { defTactic = tac }
+      return $ singleton $ A.Generalize s info i y t 
 
   -- Fields
     C.NiceField r p a i tac x (Arg ai t) -> do

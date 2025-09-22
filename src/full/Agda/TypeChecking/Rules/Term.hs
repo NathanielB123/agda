@@ -1990,31 +1990,32 @@ checkLetBinding' (A.LetApply i erased x modapp copyInfo dir) ret = do
     -- directive does contain "open public".
     dir{ publicOpen = Nothing }
   withAnonymousModule x new ret
-checkLetBinding' (A.LetGeneralize s i info x e) ret = do
+  
+checkLetBinding' (A.LetGeneralize s i info x t) ret = do
+  current <- currentModule
+  axn <- qualify current <$> freshName_ (A.unBind x)
+
   reportSDoc "tc.decl.gen" 20 $ sep
-    [ "checking type signature of generalizable variable" <+> prettyTCM x <+> ":"
-    , nest 2 $ prettyTCM e
+    [ "checking type signature of generalizable variable" <+> prettyTCM axn <+> ":"
+    , nest 2 $ prettyTCM t
     ]
 
   -- Check the signature and collect the created metas.
   (telNames, tGen) <-
     generalizeType s $ locallyTC eGeneralizeMetas (const YesGeneralizeMeta) $
-      workOnTypes $ isType_ e
+      workOnTypes $ isType_ t
   let n = length telNames
 
   reportSDoc "tc.decl.gen" 10 $ sep
-    [ "checked type signature of generalizable variable" <+> prettyTCM x <+> ":"
+    [ "checked type signature of generalizable variable" <+> prettyTCM axn <+> ":"
     , nest 2 $ prettyTCM tGen
     ]
 
-  lang <- getLanguage
   -- This is pretty inconsistent with above cases and so probably horribly
   -- wrong... but lets try it!!!
-  addConstant x $ defaultDefn info x tGen lang $ 
-    GeneralizableVar $ SomeGeneralizableArgs n
+  addConstant' axn info tGen (GeneralizableVar $ SomeGeneralizableArgs n)
   ret
 
-  -- = error "IDK what this is even meant to do lol lmao"
 -- LetOpen and (WAS:) LetDeclaredVariable are only used for highlighting.
 checkLetBinding' A.LetOpen{} ret = ret
 

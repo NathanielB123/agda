@@ -270,7 +270,7 @@ data LetBinding
     -- The @ImportDirective@ is for highlighting purposes.
   | LetOpen ModuleInfo ModuleName ImportDirective
     -- ^ only for highlighting and abstractToConcrete
-  | LetGeneralize (Set QName) DefInfo ArgInfo QName Type
+  | LetGeneralize (Set QName) LetInfo ArgInfo BindName Type
     -- ^ The first argument is the (possibly empty) set of generalizable variables used in the type.
   deriving (Show, Eq, Generic)
 

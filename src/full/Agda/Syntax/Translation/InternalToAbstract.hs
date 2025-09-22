@@ -1246,7 +1246,7 @@ instance Binder A.LetBinding where
   varsBoundIn (LetBind _ _ x _ _)       = varsBoundIn x
   varsBoundIn (LetAxiom _ _ x _)        = varsBoundIn x
   varsBoundIn (LetPatBind _ _ p _)      = varsBoundIn p
-  varsBoundIn (LetGeneralize _ _ _ x _) = singleton $ qnameName x
+  varsBoundIn (LetGeneralize _ _ _ x _) = varsBoundIn x
   varsBoundIn LetApply{}                = empty
   varsBoundIn LetOpen{}                 = empty
 
