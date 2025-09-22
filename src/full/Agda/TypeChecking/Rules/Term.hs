@@ -2013,8 +2013,9 @@ checkLetBinding' (A.LetGeneralize s i info x t) ret = do
 
   -- This is pretty inconsistent with above cases and so probably horribly
   -- wrong... but lets try it!!!
-  addConstant' axn info tGen (GeneralizableVar $ SomeGeneralizableArgs n)
-  ret
+  addConstant' axn info tGen $ GeneralizableVar $ SomeGeneralizableArgs n
+  val <- Def axn . fmap Apply <$> getContextArgs
+  addLetBinding info UserWritten (A.unBind x) val tGen ret
 
 -- LetOpen and (WAS:) LetDeclaredVariable are only used for highlighting.
 checkLetBinding' A.LetOpen{} ret = ret

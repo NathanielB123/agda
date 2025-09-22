@@ -167,7 +167,7 @@ compactDef bEnv def rewr = do
       Axiom{}                        -> pure CAxiom
       DataOrRecSig{}                 -> pure CAxiom
       AbstractDefn{}                 -> pure CAxiom
-      GeneralizableVar{}             -> __IMPOSSIBLE__
+      GeneralizableVar{}             -> pure CAxiom
       PrimitiveSort{}                -> pure COther -- TODO
       Primitive{}
         | not (FunctionReductions `SmallSet.member` allowed)
@@ -919,7 +919,7 @@ reduceTm rEnv bEnv !constInfo normalisation =
 
         -- Case: constructor. Perform beta reduction if projected from, otherwise return a value.
         Con c i []
-          -- Constructors of types in Prop are not representex as
+          -- Constructors of types in Prop are not represented as
           -- CCon, so this match might fail!
           | CCon{cconSrcCon = c', cconArity = ar} <- cdefDef (constInfo (conName c)) ->
             evalIApplyAM spine ctrl $
