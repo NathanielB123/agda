@@ -2390,6 +2390,8 @@ data RewriteRule = RewriteRule
   }
     deriving (Show, Generic)
 
+type LocalRewriteRules = [Open LocalRewriteRule]
+
 -- | Information about an @instance@ definition.
 data InstanceInfo = InstanceInfo
   { instanceClass   :: QName       -- ^ Name of the "class" this is an instance for
@@ -4184,6 +4186,7 @@ data TCEnv =
                 -- currently under, if any. Used by the scope checker
                 -- (to associate definitions to blocks), and by the type
                 -- checker (for unfolding control).
+          , envLocalRewriteRules :: LocalRewriteRules
           }
     deriving (Generic)
 
@@ -4250,6 +4253,7 @@ initEnv = TCEnv { envContext             = CxEmpty
                 , envCurrentlyElaborating   = False
                 , envSyntacticEqualityFuel  = Strict.Nothing
                 , envCurrentOpaqueId        = Nothing
+                , envLocalRewriteRules      = []
                 }
 
 class LensTCEnv a where
@@ -4442,6 +4446,9 @@ eConflComputingOverlap f e = f (envConflComputingOverlap e) <&> \ x -> e { envCo
 
 eCurrentlyElaborating :: Lens' TCEnv Bool
 eCurrentlyElaborating f e = f (envCurrentlyElaborating e) <&> \ x -> e { envCurrentlyElaborating = x }
+
+eLocalRewriteRules :: Lens' TCEnv LocalRewriteRules
+eLocalRewriteRules f e = f (envLocalRewriteRules e) <&> \ x -> e { envLocalRewriteRules = x }
 
 {-# SPECIALISE currentModality :: TCM Modality #-}
 -- | The current modality.
