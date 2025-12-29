@@ -1139,9 +1139,13 @@ instance ToConcrete A.LetBinding where
             ret [ C.Open (kwRange i) x' dir ]
               -- Andreas, 2025-11-27, kwRange is a lie,
               -- but we do not have the range of the @open@ keyword here.
-    bindToConcrete (LetGeneralize s i j x t) ret = bindToConcrete x \x -> do
+    bindToConcrete (LetGeneralize s i j x t) ret = do
+      -- bindToConcrete x \x -> do
       t' <- toConcreteTop t
-      ret [C.Generalize empty [C.TypeSig j empty (C.boundName x) $ C.Generalized t']]
+      -- ret [C.Generalize empty [C.TypeSig j empty (C.boundName x) $ C.Generalized t']]
+      x' <- unsafeQNameToName <$> toConcrete x
+      ret [C.Generalize empty [C.TypeSig j empty x' $ C.Generalized t']]
+      
 
 instance ToConcrete A.WhereDeclarations where
   type ConOfAbs A.WhereDeclarations = WhereClause

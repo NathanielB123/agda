@@ -1992,11 +1992,11 @@ checkLetBinding' (A.LetApply i erased x modapp copyInfo dir) ret = do
   withAnonymousModule x new ret
   
 checkLetBinding' (A.LetGeneralize s i info x t) ret = do
-  current <- currentModule
-  axn <- qualify current <$> freshName_ (A.unBind x)
+  -- current <- currentModule
+  -- axn <- qualify current <$> freshName_ (A.unBind x)
 
   reportSDoc "tc.decl.gen" 20 $ sep
-    [ "checking type signature of generalizable variable" <+> prettyTCM axn <+> ":"
+    [ "checking type signature of generalizable variable" <+> prettyTCM x <+> ":"
     , nest 2 $ prettyTCM t
     ]
 
@@ -2007,15 +2007,16 @@ checkLetBinding' (A.LetGeneralize s i info x t) ret = do
   let n = length telNames
 
   reportSDoc "tc.decl.gen" 10 $ sep
-    [ "checked type signature of generalizable variable" <+> prettyTCM axn <+> ":"
+    [ "checked type signature of generalizable variable" <+> prettyTCM x <+> ":"
     , nest 2 $ prettyTCM tGen
     ]
 
   -- This is pretty inconsistent with above cases and so probably horribly
   -- wrong... but lets try it!!!
-  addConstant' axn info tGen $ GeneralizableVar $ SomeGeneralizableArgs n
-  val <- Def axn . fmap Apply <$> getContextArgs
-  addLetBinding info UserWritten (A.unBind x) val tGen ret
+  addConstant' x info tGen $ GeneralizableVar $ SomeGeneralizableArgs n
+  val <- Def x . fmap Apply <$> getContextArgs
+  -- addLetBinding info UserWritten (A.unBind x) val tGen ret
+  ret
 
 -- LetOpen and (WAS:) LetDeclaredVariable are only used for highlighting.
 checkLetBinding' A.LetOpen{} ret = ret
