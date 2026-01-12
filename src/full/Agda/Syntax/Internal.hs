@@ -1235,9 +1235,14 @@ pattern PSSet p = PUniv USSet p
   PType, PSSet, PProp, PInf,
   PSizeUniv, PLockUniv, PLevelUniv, PIntervalUniv #-}
 
+data LocalRewriteHead
+  = DefHead QName
+  | LocHead Int -- de Bruijn index of head symbol (excluding lrewContext variables)
+  deriving (Show, Generic)
+
 data LocalRewriteRule = LocalRewriteRule
   { lrewContext :: Telescope
-  , lrewHead    :: Int        -- de Bruijn index of head symbol (excluding lrewContext variables)
+  , lrewHead    :: LocalRewriteHead
   , lrewPats    :: PElims     -- patterns (including lrewContext variables)
   , lrewRHS     :: Term
   , lrewType    :: Type
@@ -1477,6 +1482,12 @@ instance KillRange NLPSort where
   killRange PLockUniv = PLockUniv
   killRange PLevelUniv = PLevelUniv
   killRange PIntervalUniv = PIntervalUniv
+
+instance KillRange LocalRewriteHead where
+  killRange (LocHead a) =
+    killRangeN LocHead a
+  killRange (DefHead a) =
+    killRangeN DefHead a
 
 instance KillRange LocalRewriteRule where
   killRange (LocalRewriteRule a b c d e) =
@@ -1720,4 +1731,5 @@ instance NFData DefSing
 instance NFData NLPat
 instance NFData NLPType
 instance NFData NLPSort
+instance NFData LocalRewriteHead
 instance NFData LocalRewriteRule
