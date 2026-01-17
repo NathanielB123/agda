@@ -199,6 +199,7 @@ errorWarnings = Set.fromList
   , RewriteMaybeNonConfluent_
   , RewriteAmbiguousRules_
   , RewriteMissingRule_
+  , LetBoundLocalRewrite_
   , TopLevelPolarity_
 
   -- Recoverable parse errors
