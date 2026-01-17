@@ -74,7 +74,11 @@ data Dom' t e = Dom
   , domIsFinite :: Bool
     -- ^ Is this a Π-type (False), or a partial type (True)?
   , domTactic :: Maybe t        -- ^ "@tactic e".
-  , domRewrite :: Maybe LocalRewriteRule
+  , domEq :: Maybe LocalEquation
+    -- ^ Elaborated "@rew" equation
+    --
+    -- Will only be present if @annRewrite (argInfoAnnotation domInfo)@
+    -- is @IsRewrite@ and the type targets a valid rewrite relation
   , unDom     :: e
   } deriving (Show, Functor, Foldable, Traversable)
 
@@ -137,8 +141,11 @@ namedArgFromDom Dom{domInfo = i, domName = s, unDom = a} = Arg i $ Named s a
 -- However, this causes problems with instance resolution in several places.
 -- often for class AddContext.
 
+domFromArgEq :: Maybe LocalEquation -> Arg a -> Dom a
+domFromArgEq eq (Arg i a) = Dom i Nothing False Nothing eq a
+
 domFromArg :: Arg a -> Dom a
-domFromArg (Arg i a) = Dom i Nothing False Nothing Nothing a
+domFromArg = domFromArgEq Nothing
 
 domFromNamedArg :: NamedArg a -> Dom a
 domFromNamedArg (Arg i a) = Dom i (nameOf a) False Nothing Nothing (namedThing a)
@@ -146,8 +153,11 @@ domFromNamedArg (Arg i a) = Dom i (nameOf a) False Nothing Nothing (namedThing a
 defaultDom :: a -> Dom a
 defaultDom = defaultArgDom defaultArgInfo
 
+defaultArgDomEq :: ArgInfo -> Maybe LocalEquation -> a -> Dom a
+defaultArgDomEq info eq x = domFromArgEq eq (Arg info x)
+
 defaultArgDom :: ArgInfo -> a -> Dom a
-defaultArgDom info x = domFromArg (Arg info x)
+defaultArgDom info = defaultArgDomEq info Nothing
 
 defaultNamedArgDom :: ArgInfo -> String -> a -> Dom a
 defaultNamedArgDom info s x = (defaultArgDom info x) { domName = Just $ WithOrigin Inserted $ unranged s }
@@ -1240,6 +1250,19 @@ data LocalRewriteHead
   | LocHead Int -- de Bruijn index of head symbol (excluding lrewContext variables)
   deriving (Show, Generic)
 
+-- | Local equations are used merely for constraints ("the LHS and RHS must
+-- be convertible in the calling context").
+-- They admit arbitrary substitution.
+data LocalEquation = LocalEquation
+  { lEqContext :: Telescope
+  , lEqLHS     :: Term
+  , lEqRHS     :: Term
+  , lEqType    :: Type
+  }
+  deriving (Show, Generic)
+
+-- | Local rewrites are used for actual rewriting (extending the notion of
+-- convertibility). They do not admit arbitrary substitution.
 data LocalRewriteRule = LocalRewriteRule
   { lrewContext :: Telescope
   , lrewHead    :: LocalRewriteHead
@@ -1248,7 +1271,6 @@ data LocalRewriteRule = LocalRewriteRule
   , lrewType    :: Type
   }
   deriving (Show, Generic)
-
 
 ---------------------------------------------------------------------------
 -- * Null instances.
@@ -1488,6 +1510,10 @@ instance KillRange LocalRewriteHead where
     killRangeN LocHead a
   killRange (DefHead a) =
     killRangeN DefHead a
+
+instance KillRange LocalEquation where
+  killRange (LocalEquation a b c d) =
+    killRangeN LocalEquation a b c d
 
 instance KillRange LocalRewriteRule where
   killRange (LocalRewriteRule a b c d e) =
@@ -1732,4 +1758,5 @@ instance NFData NLPat
 instance NFData NLPType
 instance NFData NLPSort
 instance NFData LocalRewriteHead
+instance NFData LocalEquation
 instance NFData LocalRewriteRule

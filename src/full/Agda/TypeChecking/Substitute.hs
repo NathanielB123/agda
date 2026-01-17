@@ -995,6 +995,15 @@ instance Subst RewriteRule where
                   c top
     where n = size gamma
 
+instance Subst LocalEquation where
+  type SubstArg LocalEquation = Term
+  applySubst rho (LocalEquation gamma lhs rhs t) =
+    LocalEquation (applySubst rho gamma)
+                  (applySubst rho' lhs)
+                  (applySubst rho' rhs)
+                  (applySubst rho' t)
+    where rho' = liftS (size gamma) rho
+
 instance Subst a => Subst (Blocked a) where
   type SubstArg (Blocked a) = SubstArg a
   applySubst rho b = fmap (applySubst rho) b
@@ -1559,6 +1568,7 @@ deriving instance Eq DefSing
 deriving instance Eq NLPat
 deriving instance Eq NLPType
 deriving instance Eq NLPSort
+deriving instance Eq LocalEquation
 deriving instance Eq LocalRewriteHead
 deriving instance Eq LocalRewriteRule
 
@@ -1566,6 +1576,7 @@ deriving instance Ord DefSing
 deriving instance Ord NLPSort
 deriving instance Ord NLPType
 deriving instance Ord NLPat
+deriving instance Ord LocalEquation
 deriving instance Ord LocalRewriteHead
 deriving instance Ord LocalRewriteRule
 
