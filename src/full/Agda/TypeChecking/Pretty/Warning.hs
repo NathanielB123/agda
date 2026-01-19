@@ -468,7 +468,8 @@ prettyWarning = \case
         "Rewrite rule " <+> prettyTCM q <+> " has already been added"
       LetBoundLocalRewrite ->
         "Let-binding local rewrite rules is not possible"
-
+      LambdaBoundLocalRewrite ->
+        "Local rewrite rules cannot be bound in lambdas"
     ConfluenceCheckingIncompleteBecauseOfMeta f -> fsep
       [ "Confluence checking incomplete because the definition of"
       , prettyTCM f
