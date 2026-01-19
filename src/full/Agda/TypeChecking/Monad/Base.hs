@@ -5018,6 +5018,7 @@ illegalRewriteWarningName = \case
   BeforeMutualFunctionDefinition{}     -> RewriteBeforeMutualFunctionDefinition_
   DuplicateRewriteRule                 -> DuplicateRewriteRule_
   LetBoundLocalRewrite                 -> LetBoundLocalRewrite_
+  LambdaBoundLocalRewrite              -> LambdaBoundLocalRewrite_
 
 -- | Should warnings of that type be serialized?
 --
@@ -5661,6 +5662,7 @@ data IllegalRewriteRuleReason
   | BeforeMutualFunctionDefinition QName
   | DuplicateRewriteRule
   | LetBoundLocalRewrite
+  | LambdaBoundLocalRewrite
     deriving (Show, Generic)
 
 -- | Boolean flag whether a name is ambiguous.

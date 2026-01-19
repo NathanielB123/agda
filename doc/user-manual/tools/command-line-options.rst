@@ -1960,6 +1960,10 @@ Such *error warnings* are always on, they cannot be toggled by :option:`-W`.
 
      Let-binding annotated with '@rew'.
 
+.. option:: LambdaBoundLocalRewrite
+
+     Binding '@rew' argument with a lambda.
+
 .. option:: SafeFlagEta
 
      :ref:`ETA <eta-pragma>` pragmas with the :option:`--safe` flag.
