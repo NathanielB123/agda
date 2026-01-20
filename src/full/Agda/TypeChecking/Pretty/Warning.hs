@@ -536,6 +536,9 @@ prettyWarning = \case
         LambdaBoundLocalRewrite ->
           "Local rewrite rules cannot be bound in lambdas"
 
+        LocalRewriteOutsideTelescope ->
+          "Local rewrite rule arguments are (currently) only allowed in module telescopes. Consider creating an anonymous module."
+
     ConfluenceCheckingIncompleteBecauseOfMeta f -> (fsep . concat)
       [ pwords "Confluence checking incomplete because the definition of"
       , [ prettyTCM f ]

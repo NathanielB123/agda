@@ -5019,6 +5019,7 @@ illegalRewriteWarningName = \case
   DuplicateRewriteRule                 -> DuplicateRewriteRule_
   LetBoundLocalRewrite                 -> LetBoundLocalRewrite_
   LambdaBoundLocalRewrite              -> LambdaBoundLocalRewrite_
+  LocalRewriteOutsideTelescope         -> LocalRewriteOutsideTelescope_
 
 -- | Should warnings of that type be serialized?
 --
@@ -5663,6 +5664,7 @@ data IllegalRewriteRuleReason
   | DuplicateRewriteRule
   | LetBoundLocalRewrite
   | LambdaBoundLocalRewrite
+  | LocalRewriteOutsideTelescope
     deriving (Show, Generic)
 
 -- | Boolean flag whether a name is ambiguous.
