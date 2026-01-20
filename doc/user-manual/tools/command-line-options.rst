@@ -1969,6 +1969,10 @@ Such *error warnings* are always on, they cannot be toggled by :option:`-W`.
 
      Let-binding annotated with '@rew'.
 
+.. option:: LocalRewriteOutsideTelescope
+
+     '@rew' arguments are (currently) only allowed in module telescopes.
+
 .. option:: LambdaBoundLocalRewrite
 
      Binding '@rew' argument with a lambda.
