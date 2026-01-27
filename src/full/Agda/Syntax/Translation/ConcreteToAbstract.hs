@@ -1764,7 +1764,7 @@ scopeCheckLetDef wh d = setCurrentRange d do
               :| [ C.FunDef r __IMPOSSIBLE__ ConcreteDef NotInstanceDef __IMPOSSIBLE__ __IMPOSSIBLE__ __IMPOSSIBLE__
                 $ singleton $ C.Clause x (ca <> catchall) ai lhs (C.RHS rhs) NoWhere []
               ])
-              where info = setOrigin Inserted ai
+              where info = setOrigin UserWritten ai
           where
             definedName (C.IdentP _ (C.QName x)) = Just x
             definedName C.IdentP{}             = Nothing
