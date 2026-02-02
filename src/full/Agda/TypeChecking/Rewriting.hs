@@ -480,11 +480,9 @@ checkRewriteRule' eq@(LocalEquation gamma1 lhs rhs b) s = do
         errorNotGeneral :: MaybeT TCM a
         errorNotGeneral = illegalRule s $ ConstructorParametersNotGeneral c vs
 
-checkRewApp :: LocalEquation -> Type -> Term -> TCM ()
-checkRewApp
-  (LocalEquation {lEqContext = g, lEqLHS = l, lEqRHS = r, lEqType = t}) _ _ = do
-  -- TODO: Should we also check that the given term is `refl`?
-  -- (I actually don't think this is necessary...)
+checkRewConstraint :: LocalEquation -> TCM ()
+checkRewConstraint
+  (LocalEquation {lEqContext = g, lEqLHS = l, lEqRHS = r, lEqType = t}) = do
   -- TODO: Sane error messages
   addContext g $ equalTerm t l r
 
