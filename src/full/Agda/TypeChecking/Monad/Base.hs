@@ -5644,6 +5644,10 @@ data InductionAndEta = InductionAndEta
 data RewriteSource = GlobalRewrite Definition | LocalRewrite
   deriving (Show, Generic)
 
+isLocalRewrite :: RewriteSource -> Bool
+isLocalRewrite LocalRewrite      = True
+isLocalRewrite (GlobalRewrite d) = False
+
 -- Reason, why rewrite rule is invalid
 data IllegalRewriteRuleReason
   = LHSNotDefinitionOrConstructor
