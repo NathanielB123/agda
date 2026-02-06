@@ -104,6 +104,7 @@ escapeContext err n = updateContext (strengthenS err n) $ drop n
 
 {-# SPECIALIZE checkpoint :: Substitution -> TCM a -> TCM a #-}
 -- | Add a new checkpoint. Do not use directly!
+--   Also updates head symbols of local rewrite rules with variable heads
 checkpoint
   :: (MonadDebug tcm, MonadTCM tcm, MonadFresh CheckpointId tcm, ReadTCState tcm)
   => Substitution -> tcm a -> tcm a
@@ -130,6 +131,8 @@ checkpoint sub k = do
     { envCurrentCheckpoint = chkpt
     , envCheckpoints       = Map.insert chkpt IdS $
                               fmap (applySubst sub) (envCheckpoints env)
+    , envLocalRewriteRules = updateLocalRewriteHeads sub $
+                              envLocalRewriteRules env
     }
   unlessDebugPrinting $ verboseS "tc.cxt.checkpoint" 105 $ do
     newChkpts <- useTC stModuleCheckpoints
@@ -160,6 +163,13 @@ checkpoint sub k = do
 
   unlessDebugPrinting $ reportSLn "tc.cxt.checkpoint" 105 "}"
   return x
+
+-- | Update heads of local rewrite rules for the new context
+updateLocalRewriteHeads ::
+  Substitution -> LocalRewriteRuleMap -> LocalRewriteRuleMap
+updateLocalRewriteHeads sub = over lrewsVarHeaded (IntMap.mapKeys subHead)
+  where
+    subHead x = fromMaybe __IMPOSSIBLE__ $ lookupSVar sub x
 
 -- | Add a module checkpoint for the provided @ModuleName@.
 {-# SPECIALIZE setModuleCheckpoint :: ModuleName -> CheckpointId -> TCM () #-}
