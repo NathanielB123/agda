@@ -649,3 +649,8 @@ instance Free LocalRewriteRule where
     freeVars' gamma <>
     freeVars' h <>
     underBinder' (size gamma) (freeVars' ps <> freeVars' rhs <> freeVars' b)
+
+instance Free LocalEquation where
+  freeVars' (LocalEquation gamma lhs rhs b) =
+    freeVars' gamma <>
+    underBinder' (size gamma) (freeVars' lhs <> freeVars' rhs <> freeVars' b)
