@@ -2486,6 +2486,7 @@ data Definition = Defn
                          -- instantiation?
   , defMatchable      :: Set QName
     -- ^ The set of symbols with rewrite rules that match against this symbol
+    -- Does not account for local rewrite rules
   , defNoCompilation  :: Bool
     -- ^ should compilers skip this? Used for e.g. cubical's comp
   , defInjective      :: Bool
@@ -5381,6 +5382,9 @@ data TypeError
             -- ^ Attempt to pattern match in an abstraction of interval type.
         | PatternInSystem
             -- ^ Attempt to pattern or copattern match in a system.
+        | CannotGenerateTransportLocalRewrite QName
+            -- ^ Cannot generate transport for data or record type because there
+            --   is a local rewrite rule in the telescope.
     -- Data errors
         | UnexpectedParameter A.LamBinding
         | NoParameterOfName ArgName
