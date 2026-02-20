@@ -1309,6 +1309,9 @@ data LocalRewriteRule = LocalRewriteRule
   }
   deriving (Show, Generic)
 
+lrewHasProjectionPattern :: LocalRewriteRule -> Bool
+lrewHasProjectionPattern rew = any (isJust . isProjElim) $ lrewPats rew
+
 class LensLocalEquation a where
   getLocalEq :: a -> Maybe LocalEquation
 
