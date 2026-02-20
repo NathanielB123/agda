@@ -58,7 +58,7 @@ module Agda.TypeChecking.Free
     , closed
     , MetaSet
     , insertMetaSet, foldrMetaSet, metaSetToBlocker
-    , rewVars
+    , inRewVars, theRewVars
     ) where
 
 import Prelude hiding (null)
@@ -323,11 +323,23 @@ flexibleVars (VarMap m) = (`IntMap.mapMaybe` m) $ \case
 allVars :: VarMap -> VarSet
 allVars = VarSet.fromList . IntMap.keys . theVarMap
 
--- | Returns all variables that occur in local rewrite rules in the telescope
-rewVars :: Telescope -> VarSet
-rewVars EmptyTel        = VarSet.empty
-rewVars (ExtendTel a b) =
-  fromMaybe VarSet.empty
-    (VarSet.weaken (size b + 1) . allFreeVars . fromMaybe __IMPOSSIBLE__ .
-      rewDomRew <$> rewDom a)
-  <> (rewVars $ unAbs b)
+-- | Returns the variables that correspond to local rewrite rules.
+theRewVars :: Telescope -> VarSet
+theRewVars = fst . allRewVars
+
+-- | Returns all variables that occur in local rewrite rules.
+inRewVars :: Telescope -> VarSet
+inRewVars = snd . allRewVars
+
+-- | Returns two sets of variables: the first set contains all variables
+--   corresponding to local rewrite rules, and the second set includes all
+--   variables which occur in those rewrite rules.
+allRewVars :: Telescope -> (VarSet, VarSet)
+allRewVars EmptyTel        = (VarSet.empty, VarSet.empty)
+allRewVars (ExtendTel a b) =
+  fromMaybe (VarSet.empty, VarSet.empty)
+    (go . fromMaybe __IMPOSSIBLE__ . rewDomRew <$> rewDom a)
+  <> (allRewVars $ unAbs b)
+  where
+    go r =
+      (VarSet.singleton $ size b, VarSet.weaken (size b + 1) $ allFreeVars r)
