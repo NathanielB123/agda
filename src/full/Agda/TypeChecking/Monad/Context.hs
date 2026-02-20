@@ -264,7 +264,7 @@ class MonadTCEnv m => MonadAddContext m where
     -> Origin -> Name -> Term -> Dom Type -> m a -> m a
 
   -- | Adds a local rewrite rule to the context
-  addLocalRewrite :: LocalRewriteRule -> m a -> m a
+  addLocalRewrite :: RewriteRule -> m a -> m a
 
   -- | Update the context.
   --   Requires a substitution that transports things living in the old context
@@ -285,7 +285,7 @@ class MonadTCEnv m => MonadAddContext m where
 
   default addLocalRewrite
     :: (MonadAddContext n, MonadTransControl t, t n ~ m)
-    => LocalRewriteRule -> m a -> m a
+    => RewriteRule -> m a -> m a
   addLocalRewrite r = liftThrough $ addLocalRewrite r
 
   default updateContext
@@ -382,7 +382,7 @@ instance MonadAddContext TCM where
 
 -- | Adds a rewrite rule to the local typechecking environment
 defaultAddLocalRewrite :: (MonadTCEnv m, ReadTCState m)
-  => LocalRewriteRule -> m a -> m a
+  => RewriteRule -> m a -> m a
 defaultAddLocalRewrite rew ret = do
   rew' <- makeOpen rew
   case lrewHead rew of

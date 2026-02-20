@@ -244,12 +244,12 @@ instance Apply Definition where
 
   applyE t es = apply t $ fromMaybe __IMPOSSIBLE__ $ allApplyElims es
 
-instance Apply RewriteRule where
+instance Apply GlobalRewriteRule where
   apply r args =
     let newContext = apply (rewContext r) args
         sub        = liftS (size newContext) $ parallelS $
                        reverse $ map (PTerm . unArg) args
-    in RewriteRule
+    in GlobalRewriteRule
        { rewName    = rewName r
        , rewContext = newContext
        , rewHead    = rewHead r
@@ -262,12 +262,12 @@ instance Apply RewriteRule where
 
   applyE t es = apply t $ fromMaybe __IMPOSSIBLE__ $ allApplyElims es
 
-instance Apply LocalRewriteRule where
+instance Apply RewriteRule where
   apply r args =
     let newContext = apply (lrewContext r) args
         sub        = liftS (size newContext) $ parallelS $
                        reverse $ map (PTerm . unArg) args
-    in LocalRewriteRule
+    in RewriteRule
        { lrewContext = newContext
        , lrewHead    = lrewHead r
        , lrewPats    = applySubst sub (lrewPats r)
@@ -652,9 +652,9 @@ instance Abstract Definition where
 -- | @tel ⊢ (Γ ⊢ lhs ↦ rhs : t)@ becomes @tel, Γ ⊢ lhs ↦ rhs : t)@
 --   we do not need to change lhs, rhs, and t since they live in Γ.
 --   See 'Abstract Clause'.
-instance Abstract RewriteRule where
-  abstract tel (RewriteRule q gamma f ps rhs t c top) =
-    RewriteRule q (abstract tel gamma) f ps rhs t c top
+instance Abstract GlobalRewriteRule where
+  abstract tel (GlobalRewriteRule q gamma f ps rhs t c top) =
+    GlobalRewriteRule q (abstract tel gamma) f ps rhs t c top
 
 instance {-# OVERLAPPING #-} Abstract [Occ.Occurrence] where
   abstract tel []  = []
@@ -1050,10 +1050,10 @@ instance Subst NLPSort where
     PLevelUniv -> PLevelUniv
     PIntervalUniv -> PIntervalUniv
 
-instance Subst RewriteRule where
-  type SubstArg RewriteRule = NLPat
-  applySubst rho (RewriteRule q gamma f ps rhs t c top) =
-    RewriteRule q (applyNLPatSubst rho gamma)
+instance Subst GlobalRewriteRule where
+  type SubstArg GlobalRewriteRule = NLPat
+  applySubst rho (GlobalRewriteRule q gamma f ps rhs t c top) =
+    GlobalRewriteRule q (applyNLPatSubst rho gamma)
                 f (applySubst (liftS n rho) ps)
                   (applyNLPatSubst (liftS n rho) rhs)
                   (applyNLPatSubst (liftS n rho) t)
@@ -1069,22 +1069,22 @@ instance Subst a => Subst (LocalEquation' a) where
                   (applySubst rho' t)
     where rho' = liftS (size gamma) rho
 
-instance Subst LocalRewriteHead where
-  type SubstArg LocalRewriteHead = Term
+instance Subst RewriteHead where
+  type SubstArg RewriteHead = Term
   applySubst rho (RewDefHead f) = RewDefHead f
   applySubst rho (RewVarHead x) = RewVarHead $ fromMaybe __IMPOSSIBLE__ $
     deBruijnView $ lookupS rho x
 
 -- | Substitution on local rewrite rules is partial.
 applySubstLocalRewrite :: DeBruijn a
-  => Substitution' a -> LocalRewriteRule -> Maybe LocalRewriteRule
-applySubstLocalRewrite rho rew@(LocalRewriteRule gamma f ps rhs b) =
+  => Substitution' a -> RewriteRule -> Maybe RewriteRule
+applySubstLocalRewrite rho rew@(RewriteRule gamma f ps rhs b) =
   case toRenOn (allFreeVars rew) rho of
     Just (AnySub rho') -> do
       let rho'' :: DeBruijn a => Substitution' a
           rho'' = liftS (size gamma) rho'
 
-      Just $ LocalRewriteRule (applySubst rho' gamma)
+      Just $ RewriteRule (applySubst rho' gamma)
                                  (applySubst rho' f)
                                  (applySubst rho'' ps)
                                   (applySubst rho'' rhs)
@@ -1665,7 +1665,7 @@ deriving instance Eq NLPat
 deriving instance Eq NLPType
 deriving instance Eq NLPSort
 deriving instance Eq LocalEquation
-deriving instance Eq LocalRewriteRule
+deriving instance Eq RewriteRule
 deriving instance Eq RewDom
 
 deriving instance Ord DefSing
@@ -1673,8 +1673,8 @@ deriving instance Ord NLPSort
 deriving instance Ord NLPType
 deriving instance Ord NLPat
 deriving instance Ord LocalEquation
-deriving instance Ord LocalRewriteHead
-deriving instance Ord LocalRewriteRule
+deriving instance Ord RewriteHead
+deriving instance Ord RewriteRule
 deriving instance Ord RewDom
 
 ---------------------------------------------------------------------------

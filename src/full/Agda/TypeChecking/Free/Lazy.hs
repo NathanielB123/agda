@@ -640,12 +640,12 @@ instance Free NLPSort where
     PLevelUniv -> mempty
     PIntervalUniv -> mempty
 
-instance Free LocalRewriteHead where
+instance Free RewriteHead where
   freeVars' (RewDefHead f) = mempty
   freeVars' (RewVarHead x) = variable x
 
-instance Free LocalRewriteRule where
-  freeVars' (LocalRewriteRule gamma h ps rhs b) =
+instance Free RewriteRule where
+  freeVars' (RewriteRule gamma h ps rhs b) =
     freeVars' gamma <>
     freeVars' h <>
     underBinder' (size gamma) (freeVars' ps <> freeVars' rhs <> freeVars' b)
