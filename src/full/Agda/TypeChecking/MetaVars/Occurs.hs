@@ -765,7 +765,7 @@ isNeutral b f es = do
   let yes = return True
       no  = return False
   def <- getConstInfo f
-  if not (null $ defMatchable def) then no else do
+  -- if not (null $ defMatchable def) then no else do
   case theDef def of
     AbstractDefn{} -> yes
     Axiom{}    -> yes
