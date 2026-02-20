@@ -290,7 +290,7 @@ updateDefsForRewrites ::
         -- ^ Updated definitions
 updateDefsForRewrites f rews matchables
   = HMap.adjust (updateTheDef setNotInjective . setCopatternLHS) f
-  . setMatchableSymbols' f matchables
+  -- . setMatchableSymbols' f matchables
     where
       setNotInjective def@Function{} = def { funInv = NotInjective }
       setNotInjective def            = def
