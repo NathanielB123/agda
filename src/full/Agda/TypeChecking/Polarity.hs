@@ -221,12 +221,8 @@ dependentPolarity t (q:qs) pols@(p:ps) = do
       -- If the pi-type binds a local rewrite rule and the rewrite has been
       -- invalidated by a substitution, we can't go under the abstraction.
       -- Therefore, we just return the original polarities
-      -- TODO: It would probably be neater to create a dedicated
-      -- "safeUnderAbstraction" helper.
-      let canDescend = fromMaybe True $ isJust . rewDomRew <$> rewDom dom
-      ps <- if canDescend
-        then underAbstraction dom b $ \c -> dependentPolarity c qs ps
-        else return ps
+      ps <- safeUnderAbstraction (return ps) dom b $ \c ->
+        dependentPolarity c qs ps
       let fallback = ifM (isJust <$> isSizeType (unDom dom)) (return p) (return q)
       p <- case b of
         Abs{} | p /= Invariant  ->

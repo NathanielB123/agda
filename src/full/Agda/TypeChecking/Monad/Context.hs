@@ -453,14 +453,6 @@ instance AddContext (List1 (WithHiding Name), Dom Type) where
     addContext (xs, raise 1 dom)
   contextSize (xs, _) = length xs
 
--- instance AddContext ([Arg Name], Type) where
---   addContext (xs, t) = addContext ((map . fmap) unnamed xs :: [NamedArg Name], t)
---   contextSize (xs, _) = length xs
-
--- instance AddContext (List1 (Arg Name), Type) where
---   addContext (xs, t) = addContext ((fmap . fmap) unnamed xs :: List1 (NamedArg Name), t)
---   contextSize (xs, _) = length xs
-
 instance AddContext ([NamedArg Name], Type) where
   addContext ([], _)     = id
   addContext (x : xs, t) = addContext (x :| xs, t)
@@ -530,6 +522,16 @@ instance AddContext Telescope where
 {-# SPECIALIZE underAbstraction :: Subst a => Dom Type -> Abs a -> (a -> TCM b) -> TCM b #-}
 underAbstraction :: (Subst a, MonadAddContext m) => Dom Type -> Abs a -> (a -> m b) -> m b
 underAbstraction = underAbstraction' id
+
+-- | Like 'underAbstraction', but checks it is safe to go under the abstraction
+--   (i.e. we are not abstracting over an invalidated local rewrite rule) and
+--   falls back otherwise
+safeUnderAbstraction :: (Subst a, MonadAddContext m)
+  => m b -> Dom Type -> Abs a -> (a -> m b) -> m b
+safeUnderAbstraction fallback dom b ret
+  | fromMaybe True $ isJust . rewDomRew <$> rewDom dom =
+    underAbstraction dom b ret
+  | otherwise = fallback
 
 underAbstraction' :: (Subst a, MonadAddContext m, AddContext (name, Dom Type)) =>
                      (String -> name) -> Dom Type -> Abs a -> (a -> m b) -> m b
