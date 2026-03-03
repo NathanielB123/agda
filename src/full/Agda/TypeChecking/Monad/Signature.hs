@@ -650,9 +650,10 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
       -- (enclosing) module is a parent of the module of the new definition
       -- (this should only be false if th)
       -- We need to avoid abstracting 'open public' re-exports over parameter
-      if cur `isLeParentModuleOf` qnameModule y
-      then cont
-      else inTopContext $ addContext newCommonTel $ cont
+      -- if cur `isLeParentModuleOf` qnameModule y
+      -- then cont
+      -- else inTopContext $ addContext newCommonTel $ cont
+      cont
 
       -- inTopContext $ addContext newTel $ localTC
       --     (over eContext (fmap (mapModality (m `inverseComposeModality`)))) $
