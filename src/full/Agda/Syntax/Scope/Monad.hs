@@ -717,15 +717,12 @@ copyScope oldc new0 s =
           --    module M = M1.M3 A C
           --
           -- Here we can't copy M1.M2.X to M.M4.X since we need
-          -- X : (B : Set) → Set, but M.M4 has telescope (D E : Set). Thus, we
-          -- would break the invariant that all functions in a module share the
-          -- module telescope. Instead we copy M1.M2.X to M.M2.X for a fresh
-          -- module M2 that gets the right telescope.
-          m <- if x `isInModule` old
-                 then return new'
-                 else renMod' False (qnameModule x)
-                          -- Don't copy recursively here, we only know that the
-                          -- current name x should be copied.
+          -- X : (B : Set) → Set, but M.M4 has telescope (D E : Set).
+          -- Instead we keep the module the same, (i.e. M re-exports M1.M2.X),
+          -- replicating the behaviour of 'open public'
+          let m = if x `isInModule` old
+                  then new'
+                  else qnameModule x
           -- Generate a fresh name for the target.
           -- Andreas, 2015-08-11 Issue 1619:
           -- Names copied by a module macro should get the module macro's

@@ -593,8 +593,10 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
       np  <- argsToUse (qnameModule x)
       -- Because of https://github.com/agda/agda/issues/892 we might have too
       -- many arguments and need to drop some
+      -- Actually the 'zipWith' will drop these silently anyway, but I think
+      -- it is worth being explicit
       origTel <- lookupSection $ qnameModule x
-      let ts' = drop (size ts - size origTel) ts
+      let ts' = take (size origTel) ts
       -- Issue #3083: We need to use the hiding from the telescope of the
       -- original module. This can be different than the hiding for the common
       -- parent in the case of record modules.
@@ -603,7 +605,12 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
       commonTel <- lookupSection (commonParentModule old $ qnameModule x)
       reportSDoc "tc.mod.apply" 80 $ vcat
         [ "copyDef" <+> pretty x <+> "->" <+> pretty y
-        , "ts'' = " <+> pretty ts'' ]
+        , "ts'' = " <+> pretty ts''
+        , "ts   = " <+> pretty ts
+        , "np   = " <+> pretty np
+        , "tel  = " <+> pretty origTel
+        , "common tel = " <+> pretty commonTel
+        ]
       -- The module telescope had been divided by some μ, so the corresponding
       -- top level definition had type μ \ Γ → B, so if we have a substitution
       -- Δ → Γ we actually want to apply μ \ - to it, so the new top-level
@@ -805,7 +812,8 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
       tel       <- lookupSection x
       -- Because of https://github.com/agda/agda/issues/892 we might have too
       -- many arguments and need to drop some
-      let ts' = drop (size ts - size tel) ts
+      -- let ts' = drop (size ts - size tel) ts
+      let ts' = ts
       let sectionTel = apply tel $ take totalArgs ts'
       reportSDoc "tc.mod.apply" 80 $ "  ts           = " <+> mconcat (List.intersperse "; " (map pretty ts))
       reportSDoc "tc.mod.apply" 80 $ "  totalArgs    = " <+> text (show totalArgs)
