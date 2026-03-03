@@ -154,6 +154,8 @@ addConstant :: QName -> Definition -> TCM ()
 addConstant q d = do
   reportSDoc "tc.signature" 20 $ "adding constant " <+> pretty q <+> " to signature"
   reportSDoc "tc.signature" 80 $ "definition =" <?> pretty d
+  cxt <- getContextTelescope
+  reportSDoc "rewriting" 30 $ "Test 1: " <+> pretty cxt
 
   -- Every constant that gets added to the signature in hard
   -- compile-time mode is treated as erased.
@@ -630,7 +632,7 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
             , "old type = " <+> pretty (defType d) ]
           reportSDoc "tc.mod.apply" 80 $
             "new type = " <+> pretty t
-          addConstant y =<< nd y
+          (inTopContext . addConstant y) =<< nd y
           makeProjection y
           -- Issue1238: the copied def should be an 'instance' if the original
           -- def is one. Skip constructors since the original constructor will
