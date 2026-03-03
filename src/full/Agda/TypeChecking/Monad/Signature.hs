@@ -154,8 +154,6 @@ addConstant :: QName -> Definition -> TCM ()
 addConstant q d = do
   reportSDoc "tc.signature" 20 $ "adding constant " <+> pretty q <+> " to signature"
   reportSDoc "tc.signature" 80 $ "definition =" <?> pretty d
-  cxt <- getContextTelescope
-  reportSDoc "rewriting" 30 $ "Test 1: " <+> pretty cxt
 
   -- Every constant that gets added to the signature in hard
   -- compile-time mode is treated as erased.
@@ -619,10 +617,11 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
                            , modPolarity = getModalPolarity ai
                            }
 
-      -- We continue in the common telescope rather than the current
-      -- telescope to account for how 'open public' re-exports are not
-      -- abstracted over enclosing modules telescope
-      inTopContext $ addContext commonTel $ localTC
+      -- We continue in the telescope of the new definition rather than the
+      -- current telescope to account for how 'open public' re-exports should
+      -- not be abstracted over enclosing module's telescope
+      newTel <- lookupSection $ qnameModule y
+      inTopContext $ addContext newTel $ localTC
           (over eContext (fmap (mapModality (m `inverseComposeModality`)))) $
           copyDef' ts' np def
       reportSDoc "tc.mod.apply" 80 $

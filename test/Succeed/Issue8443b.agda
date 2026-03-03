@@ -6,12 +6,8 @@ module Issue8443b where
 
 postulate X : Set
 
-module M where
-  postulate P : Set
-
 module R₀ (X : Set) where
-  -- postulate P : Set
-  open M public
+  postulate P : Set
 
 module R₁ (X : Set) where
   open R₀ X public
