@@ -556,11 +556,13 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
     tickN   "copied definitions"     ds
     tickN   ("copies for " <> oldn)  (ds + ms)
 
-  reportSLn "tc.mod.apply" 40 "applySection': copying definitions"
-  _ <- Map.traverseWithKey (traverse . copyDef ts) rd
-
+  -- We need to copy the modules before the definitions so when calling copyDef'
+  -- we succeed at looking up the section of the new name
   reportSLn "tc.mod.apply" 40 "applySection': copying modules"
   _ <- Map.traverseWithKey (traverse . copySec ts) rm
+
+  reportSLn "tc.mod.apply" 40 "applySection': copying definitions"
+  _ <- Map.traverseWithKey (traverse . copyDef ts) rd
 
   reportSLn "tc.mod.apply" 40 "applySection': computing polarities"
   computePolarity (Map.elems rd >>= List1.toList)
@@ -617,13 +619,44 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
                            , modPolarity = getModalPolarity ai
                            }
 
-      -- We continue in the telescope of the new definition rather than the
-      -- current telescope to account for how 'open public' re-exports should
+      -- We continue in the common telescope of the new definition and the
+      -- current context to account for how 'open public' re-exports should
       -- not be abstracted over enclosing module's telescope
+
+      commonNewMod <- commonParentModule (qnameModule y) <$> currentModule
+
       newTel <- lookupSection $ qnameModule y
-      inTopContext $ addContext newTel $ localTC
-          (over eContext (fmap (mapModality (m `inverseComposeModality`)))) $
-          copyDef' ts' np def
+      newCommonTel <- lookupSection =<<
+          commonParentModule (qnameModule y) <$> currentModule
+      newSec <- getSection $ qnameModule y
+      cxt <- getContextTelescope
+      cur <- currentModule
+
+      reportSDoc "rewriting" 30 $ "Test 1: " <+> pretty newTel
+      reportSDoc "rewriting" 30 $ "Test 2: " <+> pretty cxt
+      reportSDoc "rewriting" 30 $ "Test 2.5: " <+> pretty newCommonTel
+      reportSDoc "rewriting" 30 $ "Test 3: " <+> pretty (isJust $ newSec)
+      reportSDoc "rewriting" 30 $ "Test 4: " <+> pretty (qnameModule y)
+      reportSDoc "rewriting" 30 $ "Test 5: " <+> pretty cur
+      reportSDoc "rewriting" 30 $ "Test 6: " <+> pretty (cur `isLeParentModuleOf` qnameModule y)
+      reportSDoc "rewriting" 30 $ "Test 7: " <+> pretty x
+      reportSDoc "rewriting" 30 $ "Test 8: " <+> pretty y
+
+      let cont = localTC (over eContext (fmap (mapModality (m `inverseComposeModality`)))) $
+            copyDef' ts' np def
+
+      -- 'open public' re-exports should not be abstracted over the enclosing
+      -- module's telescope. We achieve this by checking if the current
+      -- (enclosing) module is a parent of the module of the new definition
+      -- (this should only be false if th)
+      -- We need to avoid abstracting 'open public' re-exports over parameter
+      if cur `isLeParentModuleOf` qnameModule y
+      then cont
+      else inTopContext $ addContext newCommonTel $ cont
+
+      -- inTopContext $ addContext newTel $ localTC
+      --     (over eContext (fmap (mapModality (m `inverseComposeModality`)))) $
+      --     copyDef' ts' np def
       reportSDoc "tc.mod.apply" 80 $
         "finished copyDef" <+> pretty x <+> "->" <+> pretty y
       where
