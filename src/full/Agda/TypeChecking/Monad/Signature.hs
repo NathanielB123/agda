@@ -618,22 +618,24 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
           m = unitModality { modCohesion = getCohesion ai
                            , modPolarity = getModalPolarity ai
                            }
-      localTC (over eContext (fmap (mapModality (m `inverseComposeModality`)))) $
-        copyDef' commonTel ts' np def
+
+      -- We continue in the common telescope rather than the current
+      -- telescope to account for how 'open public' re-exports are not
+      -- abstracted over enclosing modules telescope
+      inTopContext $ addContext commonTel $ localTC
+          (over eContext (fmap (mapModality (m `inverseComposeModality`)))) $
+          copyDef' ts' np def
       reportSDoc "tc.mod.apply" 80 $
         "finished copyDef" <+> pretty x <+> "->" <+> pretty y
       where
-        copyDef' commonTel ts np d = do
+        copyDef' ts np d = do
           reportSDoc "tc.mod.apply" 60 $ "making new def for" <+> pretty y <+> "from" <+> pretty x <+> "with" <+> text (show np) <+> "args" <+> text (show $ defAbstract d)
           reportSDoc "tc.mod.apply" 80 $ vcat
             [ "args = " <+> pretty ts
             , "old type = " <+> pretty (defType d) ]
           reportSDoc "tc.mod.apply" 80 $
             "new type = " <+> pretty t
-          -- We add the constant in the common telescope rather than the current
-          -- telescope to account for how 'open public' re-exports are not
-          -- abstracted over enclosing modules telescope
-          (inTopContext . addContext commonTel . addConstant y) =<< nd y
+          addConstant y =<< nd y
           makeProjection y
           -- Issue1238: the copied def should be an 'instance' if the original
           -- def is one. Skip constructors since the original constructor will
