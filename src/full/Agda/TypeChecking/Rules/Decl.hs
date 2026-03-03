@@ -1084,7 +1084,7 @@ checkSectionApplication'
     reportSDoc "tc.mod.apply" 80 $
         "addSection" <+> prettyTCM m1 <+>
         (inTopContext $ prettyTCM $ ctxTel `abstract` aTel)
-    addSection' m1 $ ctxTel `abstract` aTel
+    addSection_ m1 $ ctxTel `abstract` aTel
 
     reportSDoc "tc.mod.apply" 20 $ vcat
       [ sep [ "applySection", prettyTCM m1, "=", prettyTCM m2, fsep $ map prettyTCM (vs ++ ts) ]
@@ -1096,9 +1096,11 @@ checkSectionApplication'
     -- in Agda.Syntax.Scope.Monad
     -- See #8443
     let n = size aTel
-    etaArgs <- inTopContext $ addContext aTel getContextArgs
-    addContext (KeepNames aTel) $
+    let etaArgs = teleArgs aTel
+    addContext aTel $
       applySection m1 (ptel `abstract` aTel) m2 (raise n args ++ etaArgs) copyInfo
+    -- applySection_ m1 (ctxTel `abstract` aTel)
+    --               (ptel `abstract` aTel) m2 (raise n args ++ etaArgs) copyInfo
 
 checkSectionApplication' _ Erased{} _ A.RecordModuleInstance{} _ =
   __IMPOSSIBLE__

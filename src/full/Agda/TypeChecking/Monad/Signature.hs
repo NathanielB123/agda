@@ -152,6 +152,12 @@ warnForPlentyInHardCompileTimeMode = \case
 -- | Add a constant to the signature. Lifts the definition to top level.
 addConstant :: QName -> Definition -> TCM ()
 addConstant q d = do
+  tel <- getContextTelescope
+  addConstant_ tel q d
+
+-- | Add a constant to the signature. Lifts the definition over the telescope.
+addConstant_ :: Telescope -> QName -> Definition -> TCM ()
+addConstant_ tel q d = do
   reportSDoc "tc.signature" 20 $ "adding constant " <+> pretty q <+> " to signature"
   reportSDoc "tc.signature" 80 $ "definition =" <?> pretty d
 
@@ -165,7 +171,6 @@ addConstant q d = do
         warnForPlentyInHardCompileTimeMode erased
         return $ mapQuantity (zeroQuantity `composeQuantity`) d
 
-  tel <- getContextTelescope
   let tel' = killRange $ case theDef d of
               Constructor{} -> fmap hideOrKeepInstance tel
               Function{ funProjection = Right Projection{ projProper = Just{}, projIndex = n } } ->
@@ -286,10 +291,10 @@ markFirstOrder = setFunctionFlag FunFirstOrder True
 addSection :: ModuleName -> TCM ()
 addSection m = do
   tel <- getContextTelescope
-  addSection' m tel
+  addSection_ m tel
 
-addSection' :: ModuleName -> Telescope -> TCM ()
-addSection' m tel = do
+addSection_ :: ModuleName -> Telescope -> TCM ()
+addSection_ m tel = do
   let sec = Section tel
   -- Make sure we do not overwrite an existing section!
   whenJustM (getSection m) $ \ sec' -> do
@@ -448,9 +453,22 @@ applySection
   -> Args           -- ^ Arguments of module application.
   -> ScopeCopyInfo  -- ^ Imported names and modules
   -> TCM ()
-applySection new ptel old ts info@ScopeCopyInfo{ renModules = rm, renNames = rd } = do
+applySection new ptel old ts info = do
+  cxtTel <- getContextTelescope
+  applySection_ new cxtTel ptel old ts info
+
+-- | Module application (followed by module parameter abstraction).
+applySection_
+  :: ModuleName     -- ^ Name of new module defined by the module macro.
+  -> Telescope      -- ^ Parameters to lambda lift definitions over.
+  -> Telescope      -- ^ Parameters of new module.
+  -> ModuleName     -- ^ Name of old module applied to arguments.
+  -> Args           -- ^ Arguments of module application.
+  -> ScopeCopyInfo  -- ^ Imported names and modules
+  -> TCM ()
+applySection_ new liftTel ptel old ts info@ScopeCopyInfo{ renNames = rd } = do
   rd <- closeConstructors rd
-  applySection' new ptel old ts info{ renModules = rm, renNames = rd }
+  applySection' new liftTel ptel old ts info
   where
 
     -- If a datatype is being copied, all its constructors need to be copied,
@@ -529,8 +547,10 @@ applySection new ptel old ts info@ScopeCopyInfo{ renModules = rm, renNames = rd 
 
             _                         -> []
 
-applySection' :: ModuleName -> Telescope -> ModuleName -> Args -> ScopeCopyInfo -> TCM ()
-applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm } = do
+applySection' ::
+     ModuleName -> Telescope -> Telescope -> ModuleName -> Args -> ScopeCopyInfo
+  -> TCM ()
+applySection' new liftTel ptel old ts ren = do
   do
     noCopyList <- catMaybes <$> mapM getName' constrainedPrims
     for_ (Map.keys rd) $ \ q ->
@@ -567,6 +587,8 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
 
   reportSLn "tc.mod.apply" 40 "finished applySection'"
   where
+    ScopeCopyInfo{ renNames = rd, renModules = rm } = ren
+
     -- Andreas, 2013-10-29
     -- Here, if the name x is not imported, it persists as
     -- old, possibly out-of-scope name.
@@ -601,7 +623,10 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
       commonTel <- lookupSection (commonParentModule old $ qnameModule x)
       reportSDoc "tc.mod.apply" 80 $ vcat
         [ "copyDef" <+> pretty x <+> "->" <+> pretty y
-        , "ts' = " <+> pretty ts' ]
+        , "ts  = " <+> pretty ts
+        , "ts' = " <+> pretty ts'
+        , "origTel = " <+> pretty origTel
+        , "np = " <+> pretty np ]
       -- The module telescope had been divided by some μ, so the corresponding
       -- top level definition had type μ \ Γ → B, so if we have a substitution
       -- Δ → Γ we actually want to apply μ \ - to it, so the new top-level
@@ -623,7 +648,7 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
             , "old type = " <+> pretty (defType d) ]
           reportSDoc "tc.mod.apply" 80 $
             "new type = " <+> pretty t
-          addConstant y =<< nd y
+          addConstant_ liftTel y =<< nd y
           makeProjection y
           -- Issue1238: the copied def should be an 'instance' if the original
           -- def is one. Skip constructors since the original constructor will
@@ -806,7 +831,7 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
       reportSDoc "tc.mod.apply" 80 $ "  totalArgs    = " <+> text (show totalArgs)
       reportSDoc "tc.mod.apply" 80 $ "  tel          = " <+> text (unwords (map (fst . unDom) $ telToList tel))  -- only names
       reportSDoc "tc.mod.apply" 80 $ "  sectionTel   = " <+> text (unwords (map (fst . unDom) $ telToList ptel)) -- only names
-      addContext sectionTel $ addSection y
+      addSection_ y $ liftTel `abstract` sectionTel
       reportSDoc "tc.mod.apply" 80 $
         "finished copySec" <+> pretty x <+> "->" <+> pretty y
 
