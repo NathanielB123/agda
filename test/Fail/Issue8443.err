@@ -1,4 +1,4 @@
-Issue1985d.agda:19.8-14: error: [UnequalTypes]
+Issue8443.agda:19.8-14: error: [UnequalTypes]
 The type
   (bot : ⊥) → ⊥
 is not a subtype of

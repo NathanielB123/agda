@@ -593,22 +593,20 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
     copyDef ts x y = do
       def <- getConstInfo x
       np  <- argsToUse (qnameModule x)
-      -- The 'zipWith' would perform this 'take' silently anyway, but I think it
-      -- is worth being explicit
       origTel <- lookupSection $ qnameModule x
-      let ts' = take (size origTel) ts
       -- Issue #3083: We need to use the hiding from the telescope of the
       -- original module. This can be different than the hiding for the common
       -- parent in the case of record modules.
       let hidings = map getHiding $ telToList origTel
-      let ts'' = zipWith setHiding hidings ts'
+      -- This zipWith silently drops arguments in some cases (see #8443)
+      let ts' = zipWith setHiding hidings ts
       commonTel <- lookupSection (commonParentModule old $ qnameModule x)
       reportSDoc "tc.mod.apply" 80 $ vcat
         [ "copyDef" <+> pretty x <+> "->" <+> pretty y
-        , "ts'' = " <+> pretty ts''
-        , "ts   = " <+> pretty ts
-        , "np   = " <+> pretty np
-        , "tel  = " <+> pretty origTel
+        , "ts' = " <+> pretty ts'
+        , "ts  = " <+> pretty ts
+        , "np  = " <+> pretty np
+        , "tel = " <+> pretty origTel
         , "common tel = " <+> pretty commonTel
         ]
       -- The module telescope had been divided by some μ, so the corresponding
@@ -621,18 +619,21 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
                            , modPolarity = getModalPolarity ai
                            }
       localTC (over eContext (fmap (mapModality (m `inverseComposeModality`)))) $
-        copyDef' ts'' np def
+        copyDef' commonTel ts' np def
       reportSDoc "tc.mod.apply" 80 $
         "finished copyDef" <+> pretty x <+> "->" <+> pretty y
       where
-        copyDef' ts np d = do
+        copyDef' commonTel ts np d = do
           reportSDoc "tc.mod.apply" 60 $ "making new def for" <+> pretty y <+> "from" <+> pretty x <+> "with" <+> text (show np) <+> "args" <+> text (show $ defAbstract d)
           reportSDoc "tc.mod.apply" 80 $ vcat
             [ "args = " <+> pretty ts
             , "old type = " <+> pretty (defType d) ]
           reportSDoc "tc.mod.apply" 80 $
             "new type = " <+> pretty t
-          (inTopContext . addConstant y) =<< nd y
+          -- We add the constant in the common telescope rather than the current
+          -- telescope to account for how 'open public' re-exports are not
+          -- abstracted over enclosing modules telescope
+          (inTopContext . addContext commonTel . addConstant y) =<< nd y
           makeProjection y
           -- Issue1238: the copied def should be an 'instance' if the original
           -- def is one. Skip constructors since the original constructor will
@@ -810,11 +811,7 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
       reportSDoc "tc.mod.apply" 80 $ "Copying section" <+> pretty x <+> "to" <+> pretty y
       totalArgs <- argsToUse x
       tel       <- lookupSection x
-      -- Because of https://github.com/agda/agda/issues/892 we might have too
-      -- many arguments and need to drop some
-      -- let ts' = drop (size ts - size tel) ts
-      let ts' = ts
-      let sectionTel = apply tel $ take totalArgs ts'
+      let sectionTel = apply tel $ take totalArgs ts
       reportSDoc "tc.mod.apply" 80 $ "  ts           = " <+> mconcat (List.intersperse "; " (map pretty ts))
       reportSDoc "tc.mod.apply" 80 $ "  totalArgs    = " <+> text (show totalArgs)
       reportSDoc "tc.mod.apply" 80 $ "  tel          = " <+> text (unwords (map (fst . unDom) $ telToList tel))  -- only names
