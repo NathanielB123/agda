@@ -719,7 +719,8 @@ copyScope oldc new0 s =
           -- Here we can't copy M1.M2.X to M.M4.X since we need
           -- X : (B : Set) → Set, but M.M4 has telescope (D E : Set).
           -- Instead we keep the module the same, (i.e. M re-exports M1.M2.X),
-          -- replicating the behaviour of 'open public'
+          -- replicating the behaviour of 'open public' and maintaining the
+          -- invariant that all M.f names share the telescope of M.
           let m = if x `isInModule` old
                   then new'
                   else qnameModule x
@@ -749,10 +750,13 @@ copyScope oldc new0 s =
             Just (y, False) | rec -> y <$ copyRec x y
             Just (y, _)           -> return y
             Nothing -> do
-            -- Ulf (issue 1985): If copying a reexported module we put it at the
-            -- top-level, to make sure we don't mess up the invariant that all
-            -- (abstract) names M.f share the argument telescope of M.
-            let newM = if x `isLtChildModuleOf` old then newL else mnameToList new0
+            -- Ulf (issue 1985): If copying a reexported module we keep the
+            -- list of names the same to make sure we don't mess up the
+            -- invariant that all (abstract) names M.f share the argument
+            -- telescope of M.
+            let newM = if x `isLtChildModuleOf` old
+                       then newL
+                       else initWithDefault __IMPOSSIBLE__ $ A.mnameToList x
 
             y <- do
                -- Andreas, Jesper, 2015-07-02: Issue 1597

@@ -6,14 +6,15 @@ module Issue8443b where
 data ⊥ : Set where
 
 module M1 (bot : ⊥) where
-  foo : ⊥
-  foo = bot
+  module M2 (n : Nat) where
+    foo : ⊥
+    foo = bot
 
-module M2 (A : Nat) where
+module M3 (n : Nat) where
   open M1 public
 
-module M3           = M2
-module M4 (x : Nat) = M3 42
+module M4 = M3
+module M5 = M4 42
 
 test : ⊥
-test = M4.foo 42
+test = M5.M2.foo 3

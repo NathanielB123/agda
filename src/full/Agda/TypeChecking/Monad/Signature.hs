@@ -591,10 +591,8 @@ applySection' new ptel old ts ren@ScopeCopyInfo{ renNames = rd, renModules = rm 
     copyDef ts x y = do
       def <- getConstInfo x
       np  <- argsToUse (qnameModule x)
-      -- Because of https://github.com/agda/agda/issues/892 we might have too
-      -- many arguments and need to drop some
-      -- Actually the 'zipWith' will drop these silently anyway, but I think
-      -- it is worth being explicit
+      -- The 'zipWith' would perform this 'take' silently anyway, but I think it
+      -- is worth being explicit
       origTel <- lookupSection $ qnameModule x
       let ts' = take (size origTel) ts
       -- Issue #3083: We need to use the hiding from the telescope of the
