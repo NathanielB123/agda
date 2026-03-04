@@ -10,9 +10,6 @@ module Foo (f : Nat → Nat) (@rewrite ◆◆ : f 0 ≡ 1) where
   foo : Nat
   foo = 42
 
-module Bar = Foo (λ _ → 1)
-
-open Bar refl
-
-test : Nat
-test = foo
+-- Even though we haven't applied the local rewrite argument yet, we still need
+-- to throw an error because of how module applications get eta-expanded
+module Bar = Foo (λ _ → 0)

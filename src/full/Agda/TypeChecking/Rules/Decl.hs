@@ -970,6 +970,17 @@ checkModuleArity m tel = \case
         (NotHidden, Hidden, _)            -> bad
         (NotHidden, Instance{}, _)        -> bad
 
+-- | Checks local rewrite rule constraints are satisfied definitionally
+--   and returns the telescope with all local rewrite rules removed
+addRewConstraints :: Telescope -> TCM Telescope
+addRewConstraints EmptyTel        = pure EmptyTel
+addRewConstraints (ExtendTel a b) = do
+  whenJust (rewDom a) $ \r -> do
+    addRewConstraint $ rewDomEq r
+  let a' = a { rewDom = Nothing }
+  b' <- underAbstraction a' b addRewConstraints
+  pure $ ExtendTel a' b { unAbs = b' }
+
 -- | Check an application of a section.
 checkSectionApplication
   :: Info.ModuleInfo
@@ -1086,6 +1097,13 @@ checkSectionApplication'
       , nest 2 $ pretty copyInfo
       ]
     args <- instantiateFull $ vs ++ ts
+
+    -- Because we eta-expand module applications, we need to add aTel to the
+    -- context, but aTel might contain invalidated local rewrite rules.
+    -- We apply a sledgehammer fix for now, and check that all local rewrite
+    -- rules are satisfied definitionally.
+    aTel <- addRewConstraints aTel
+
     -- If we want to avoid eta-expanding modules (while supporting the current
     -- 'open public' behaviour) we should also change 'renName'/'renMod'
     -- in Agda.Syntax.Scope.Monad
