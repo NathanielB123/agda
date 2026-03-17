@@ -1501,10 +1501,6 @@ The list containing any warning ``NAME`` can be produced by ``agda --help=warnin
 
      Invalid relevance annotations, automatically corrected.
 
-.. option:: MisplacedRewrite
-
-     Invalid local rewrite annotations, automatically ignored.
-
 .. option:: FixityInRenamingModule
 
      Fixity annotations in ``renaming`` directives for a ``module``.
@@ -1597,6 +1593,10 @@ The list containing any warning ``NAME`` can be produced by ``agda --help=warnin
 .. option:: MisplacedAttributes
 
      Attributes where they cannot appear.
+
+.. option:: MisplacedRewrite
+
+     Invalid local rewrite annotations, automatically ignored.
 
 .. option:: MissingTypeSignatureForOpaque
 
@@ -1941,6 +1941,14 @@ Such *error warnings* are always on, they cannot be toggled by :option:`-W`.
 
      Importing a file using e.g. :option:`--cubical` into one which does not.
 
+.. option:: InferredLocalRewrite
+
+     Tried to solve a meta with an '@rewrite' function.
+
+.. option:: LocalRewriteOutsideTelescope
+
+     '@rewrite' arguments are (currently) only allowed in module telescopes.
+
 .. option:: MissingDataDeclaration
 
      Constructor definitions not associated to a data declaration.
@@ -1984,10 +1992,6 @@ Such *error warnings* are always on, they cannot be toggled by :option:`-W`.
 .. option:: RewriteNonConfluent
 
      Failed confluence checks while joining critical pairs.
-
-.. option:: LocalRewriteOutsideTelescope
-
-     '@rewrite' arguments are (currently) only allowed in module telescopes.
 
 .. option:: SafeFlagEta
 
