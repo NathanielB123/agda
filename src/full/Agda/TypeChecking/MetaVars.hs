@@ -140,11 +140,11 @@ assignTerm x tel v = do
 -- | Skip frozen check.  Used for eta expanding frozen metas.
 assignTermTCM' :: MetaId -> [Arg ArgName] -> Term -> TCM ()
 assignTermTCM' x tel v = do
-    -- TODO: The 'prettyTCM v' here can hit impossible because we are not in the
-    -- right context. Really, we should abstract add 'tel' to the context but
-    -- this is not so easy because we only have the names.
+    let dummyFromArg (Arg i n) = defaultNamedArgDom i n __DUMMY_TYPE__
+
     reportSDoc "tc.meta.assign" 70 $ vcat
-      [ "assignTerm" <+> prettyTCM x <+> " := " <+> prettyTCM v
+      [ "assignTerm" <+> prettyTCM x <+> " := " <+>
+        addContext (dummyFromArg <$> tel) (prettyTCM v)
       , nest 2 $ "tel =" <+> prettyList_ (map (text . unArg) tel)
       ]
      -- verify (new) invariants
@@ -753,7 +753,7 @@ etaExpandMetaTCM kinds m = whenM ((not <$> isFrozen m) `and2M` asksTC envAssignM
                 catchPatternErr (\x -> waitFor x) $ do
                  ifM (isSingletonRecord r ps) expand dontExpand
                 else dontExpand
-            ) $ {- else -} {- else -} {- else -} {- else -} ifM (andM [ return $ Levels `elem` kinds
+            ) $ {- else -} ifM (andM [ return $ Levels `elem` kinds
                             , typeInType
                             , (Just lvl ==) <$> getBuiltin' builtinLevel
                             ]) (do
@@ -802,17 +802,23 @@ assignWrapper dir x es v doAssign = do
 allRewDoms :: Tele (Dom Type) -> [RewDom]
 allRewDoms = mapMaybe rewDom . flattenTel
 
--- | Gets the set of variables forced by local rewrite rules
-rewForced :: Tele (Dom Type) -> VarSet
-rewForced =
-  foldMap (rewForced' . fromMaybe __IMPOSSIBLE__ . rewDomRew) . allRewDoms
+-- | Gets the set of variables constrained by local rewrite rules
+--
+--   We specifically care about variables that occur exactly as LHSs of local
+--   rewrite rules. Unification problems under such local rewrite rules might
+--   appear outside the pattern fragment after rewriting arguments, but if the
+--   argument is constrained in the meta's context, we know it is uniquely
+--   determined up to defeq and can proceed.
+rewConstrained :: Tele (Dom Type) -> VarSet
+rewConstrained =
+  foldMap (rewConstrained' . fromMaybe __IMPOSSIBLE__ . rewDomRew) . allRewDoms
   where
-    rewForced' :: RewriteRule -> VarSet
-    rewForced' (RewriteRule EmptyTel (RewVarHead x) [] _ _) =
+    rewConstrained' :: RewriteRule -> VarSet
+    rewConstrained' (RewriteRule EmptyTel (RewVarHead x) [] _ _) =
       VarSet.singleton x
-    rewForced' (RewriteRule _ (RewVarHead x) [] _ _) =
+    rewConstrained' (RewriteRule _ (RewVarHead x) [] _ _) =
       __IMPOSSIBLE__
-    rewForced' _ =
+    rewConstrained' _ =
       VarSet.empty
 
 -- | Miller pattern unification:
@@ -1076,16 +1082,12 @@ assign dir x args v target = addOrUnblocker (unblockOnMeta x) $ do
       let n = length args
       TelV mTel _ <- telViewUpToPath n t
 
-      -- We need to identify arguments to the meta that are forced by local
-      -- rewrite rules
-      let forced = rewForced mTel
       -- We should never prune local rewrite rules
-      let rVars = theRewVars cxt
-      let noPrune = VarSet.union fvs rVars
+      let noPrune = VarSet.union fvs $ theRewVars cxt
 
       -- Check that the arguments are variables
       mids <- do
-        res <- runExceptT $ inverseSubst' (const False) forced args
+        res <- runExceptT $ inverseSubst' (const False) mTel args
         case res of
           -- all args are variables
           Right ids -> do
@@ -1169,11 +1171,12 @@ assign dir x args v target = addOrUnblocker (unblockOnMeta x) $ do
     attemptPruning
       :: MetaId  -- Meta-variable (lhs)
       -> Args    -- Meta arguments (lhs)
-      -> FVs     -- Variables occuring on the rhs
+      -> VarSet  -- Variables we do not want to prune
+                 -- (e.g. those occurring on the rhs)
       -> TCM a
-    attemptPruning x args fvs = do
+    attemptPruning x args noPrune = do
       -- non-linear lhs: we cannot solve, but prune
-      killResult <- prune x args $ (`VarSet.member` fvs)
+      killResult <- prune x args $ (`VarSet.member` noPrune)
       let success = killResult `elem` [PrunedSomething,PrunedEverything]
       reportSDoc "tc.meta.assign" 10 $
         "pruning" <+> prettyTCM x <+> do text $ if success then "succeeded" else "failed"
@@ -1730,8 +1733,8 @@ data InvertExcept
 --   Linearity, i.e., whether the substitution is deterministic,
 --   has to be checked separately.
 --
-inverseSubst' :: (Term -> Bool) -> VarSet -> Args -> ExceptT InvertExcept TCM SubstCand
-inverseSubst' skip rewForced args = map (first unArg) <$> loop (zip args terms)
+inverseSubst' :: (Term -> Bool) -> Tele (Dom Type) -> Args -> ExceptT InvertExcept TCM SubstCand
+inverseSubst' skip mTel args = map (first unArg) <$> loop (zip args terms)
   where
   loop  = foldM isVarOrIrrelevant []
   terms = map var (downFrom (size args))
@@ -1741,12 +1744,15 @@ inverseSubst' skip rewForced args = map (first unArg) <$> loop (zip args terms)
       , "  aborting assignment" ]
     throwError (CantInvert c)
   neutralArg = throwError NeutralArg
+  -- We need to identify variable arguments to the meta that are
+  -- constrained by local rewrite rules
+  constrained = rewConstrained mTel
 
   isVarOrIrrelevant :: Res -> (Arg Term, Term) -> ExceptT InvertExcept TCM Res
   isVarOrIrrelevant vars (Arg info v, Var x [])
-    | x `VarSet.member` rewForced = do
+    | x `VarSet.member` constrained = do
     lift $ reportSDoc "tc.meta.assign" 60 $ vcat
-            [ "argument is forced by rewrite rule"
+            [ "argument is constrained by rewrite rule"
             , "  arg = " <+> prettyTCM v
             , "  var = " <+> prettyTCM (var x)
             ]
@@ -1874,18 +1880,19 @@ isFaceConstraint mid args = runMaybeT $ do
       IZero -> Just (i, False)
       _     -> Nothing
 
+  m           <- getContextSize
+  TelV tel' _ <- telViewUpToPath n t
+
   -- The logic here is essentially the same as for actually solving the
   -- meta.. We just return the pieces instead of doing the assignment.
   -- We must check the "face condition" (the relaxed pattern condition)
   -- and check linearity of the substitution candidate, otherwise the
   -- equation can't be inverted into a face constraint.
   sub <- MaybeT $ either (const Nothing) Just <$> runExceptT
-    (inverseSubst' isEndpoint VarSet.empty args)
+    (inverseSubst' isEndpoint tel' args)
   ids <- MaybeT $ either (const Nothing) Just <$> runExceptT
     (checkLinearity sub)
 
-  m           <- getContextSize
-  TelV tel' _ <- telViewUpToPath n t
   tel''       <- enterClosure mvar $ \_ -> getContextTelescope
 
   let

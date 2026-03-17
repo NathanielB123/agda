@@ -769,8 +769,7 @@ checkArgumentsE'
                               (return Nothing) (return . Just)
                       return s{ sChecked = chk }
 
-            _ -> do
-              return s
+            _ -> return s
 
         -- sFunType <- lift $ forcePi (getHiding info)
         --                  (maybe "_" rangedThing $ nameOf e) sFunType

@@ -7,14 +7,15 @@ Local Rewriting
 
 
 Local rewrite rules is an experimental feature which enables parameterising
-over computation rules. Specifically, it allows declaring
+modules over computation rules. Specifically, it allows declaring
 module parameters targetting a rewrite relation as local rewrite rules by
 annotating with them the ``@rewrite`` attribute. Consequently:
 
 * Inside the module, local rewrite rules will automatically apply during
-  reduction, rewriting instances of the left-hand side with the right-hand side,
+  reduction, rewriting instances of the left-hand side to the right-hand side,
   similarly to :doc:`global rewriting <rewriting>`.
-* Outside the module, local rewrite rules act as constraints. E.g. when
+* Outside the module, local rewrite rules act as constraints on
+  instantiations of the module parameters. E.g. when
   opening the module, Agda will check that both sides are
   definitionally equal.
 
@@ -25,9 +26,13 @@ make a strong syntactic
 distinction between the "interface environment" and the "local context", but
 nonetheless, by restricting
 ``@rewrite`` attributes to module parameters, quantification over
-rewrites is prenex-only.
+rewrites is prenex-only. For example, definitions cannot return local rewrite
+rules, or be parameterised over other definitions taking local rewrite rules,
+so ``foo : (n : Nat) → (@rewrite n ≡ 0 → Nat) → Nat`` is not allowed.
+
 Semantically, local rewrite rules can
-be eliminated with inlining and so should be conservative over the rest of
+be eliminated by inlining all instantiations of modules with local rewrite
+rule parameters and so should be conservative over the rest of
 Agda's theory.
 
 .. note:: This page is about the :option:`--local-rewriting` option. This is
@@ -45,7 +50,7 @@ Local rewrite rules by example
 
 ::
 
-  {-# OPTIONS --local-rewriting #-}
+  {-# OPTIONS --local-rewriting --rewriting #-}
 
   module language.local-rewriting where
 
@@ -58,6 +63,7 @@ Local rewrite rules by example
   open import Agda.Builtin.Nat hiding (_+_)
   open import Agda.Builtin.Sigma
   open import Agda.Builtin.Unit
+  open import Agda.Builtin.List
 
   _×_ : Set → Set → Set
   A × B = Σ A λ _ → B
@@ -74,10 +80,8 @@ Local rewrite rules by example
   sym : ∀ {A : Set} {x y : A} → x ≡ y → y ≡ x
   sym refl = refl
 
-  infixr 5 _∙_
-
-  _∙_ : ∀ {A : Set} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
-  refl ∙ q = q
+  trans : ∀ {A : Set} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
+  trans refl q = q
 
 To motivate local rewrite rules, consider the following code which implements
 addition and proves associativity for Agda's built-in natural numbers.
@@ -89,40 +93,20 @@ addition and proves associativity for Agda's built-in natural numbers.
     zero  + m = m
     suc n + m = suc (n + m)
 
-    ++ : ∀ {n m l} → (n + m) + l ≡ n + (m + l)
-    ++ {n = zero}  = refl
-    ++ {n = suc n} = cong suc (++ {n = n})
+    +-assoc : ∀ {n m l} → (n + m) + l ≡ n + (m + l)
+    +-assoc {n = zero}  = refl
+    +-assoc {n = suc n} = cong suc (+-assoc {n = n})
 
-Now imagine we want to use a different encoding of natural numbers. For example,
-as the fixed point of a particular functor (e.g. perhaps for generic
-programming).
+Now imagine we want to use a different encoding of natural numbers.
+For example, lists of unit values.
 
 ::
 
-  -- Codes for functors comprised of sums, products, identity, unit and empty
-  data Desc : Set₁ where
-    _⊎F_ _×F_ : Desc → Desc → Desc
-    idF ⊤F ⊥F : Desc
-
-  ⟦_⟧ : Desc → Set → Set
-  ⟦ idF    ⟧ A = A
-  ⟦ ⊤F     ⟧ A = ⊤
-  ⟦ ⊥F     ⟧ A = ⊥
-  ⟦ F ⊎F G ⟧ A = ⟦ F ⟧ A ⊎ ⟦ G ⟧ A
-  ⟦ F ×F G ⟧ A = ⟦ F ⟧ A × ⟦ G ⟧ A
-
-  data μ (F : Desc) : Set where
-    fix : ⟦ F ⟧ (μ F) → μ F
-
-  NatF : Desc
-  NatF = ⊤F ⊎F idF
-
-  Nat' : Set
-  Nat' = μ NatF
+  Nat' = List ⊤
 
 To define addition and prove associativity for ``Nat'`` without
 duplication, we can parameterise our addition and the
-associativity definitions over a type of natural numbers and an
+associativity definitions over an abstract type of natural numbers and an
 induction principle.
 
 ::
@@ -136,11 +120,13 @@ induction principle.
     _+_ : Nat → Nat → Nat
     n + m = ind (λ _ → Nat) m (λ _ → suc) n
 
-    ++ : ∀ {n m l} → (n + m) + l ≡ n + (m + l)
-    ++ {n = n} {m = m} {l = l}
+    +-assoc : ∀ {n m l} → (n + m) + l ≡ n + (m + l)
+    +-assoc {n = n} {m = m} {l = l}
       = ind (λ □ → (□ + m) + l ≡ □ + (m + l))
-            (cong (_+ l) ind-zero ∙ sym ind-zero)
-            (λ _ h → cong (_+ l) ind-suc ∙ ind-suc ∙ cong suc h ∙ sym ind-suc)
+            (trans (cong (_+ l) ind-zero) (sym ind-zero))
+            (λ _ h → trans (cong (_+ l) ind-suc)
+                   ( trans ind-suc
+                   ( trans (cong suc h) (sym ind-suc))))
             n
 
 We have succeeded in writing a single parametric definition of addition and
@@ -165,8 +151,8 @@ proof, whilst staying parametric over encoding details.
     _+_ : Nat → Nat → Nat
     n + m = ind (λ _ → Nat) m (λ _ → suc) n
 
-    ++ : ∀ {n m l} → (n + m) + l ≡ n + (m + l)
-    ++ {n = n} {m = m} {l = l}
+    +-assoc : ∀ {n m l} → (n + m) + l ≡ n + (m + l)
+    +-assoc {n = n} {m = m} {l = l}
       = ind (λ □ → (□ + m) + l ≡ □ + (m + l)) refl (λ _ h → cong suc h) n
 
 For more examples on where local rewrite rules can be useful, see the
@@ -183,13 +169,13 @@ Currently, no form of confluence or termination checking is implemented for
 local rewrite rules. The consequences of non-confluent or non-terminating
 local rewrite rules are similar to :doc:`global rewriting <rewriting>`:
 non-confluence endangers subject reduction and non-termination might cause
-the typechecker to loop.
+the typechecker to loop, but logical soundness should never be threatened.
 
 Refining local rewrite rules with pattern matching
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Currently, forced pattern matches on variables that occur in local rewrite rules
-are not allowed. This is to avoid typechecking under invalid rewrite rules
+Currently, inaccessible pattern matches on variables that occur in local rewrite
+rules are not allowed. This is to avoid typechecking under invalid rewrite rules
 (rewrite validity is unstable under substitution).
 
 .. code-block:: agda
@@ -203,8 +189,7 @@ Furthermore, matches on variables in local rewrite rules breaks the
 inlining-based semantic justification.
 
 In spite of these downsides, there are plans to relax this restriction in the
-future under
-an even more experimental flag. It turns out allowing refining local rewrite
+future under an additional flag. Refining local rewrite
 rules with pattern matches enables a restricted form of
 "local equality reflection", which has many interesting applications, including
 a (hopefully) better-behaved :doc:`with-abstraction <with-abstraction>`
@@ -213,7 +198,7 @@ mechanism.
 Parameterising datatypes over local rewrite rules with :option:`--cubical`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In :doc:`Cubical Agda <cubical>`, there an additional limitation with local
+In :doc:`Cubical Agda <cubical>`, there is an additional limitation with local
 rewrite rules. Attempting to declare data or record types inside modules with
 local rewrite rule
 parameters will throw a ``CannotGenerateTransportLocalRewrite`` error:

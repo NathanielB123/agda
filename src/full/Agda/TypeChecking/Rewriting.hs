@@ -427,9 +427,7 @@ checkRewriteRule' eq@(LocalEquation gamma1 lhs rhs b) s = do
         (RewVarHead x, Var x' es')   | x + telStart == x' -> return es'
         _                              -> fail
       unless (null es && null es') $ do
-        a   <- case f of
-          RewDefHead f -> lift $ computeElimHeadType f es es'
-          RewVarHead x -> typeOfBV $ x + telStart
+        a   <- lift $ computeRewHeadType telStart f es es'
         pol <- case f of
           RewDefHead f -> getPolarity' CmpEq f
           RewVarHead x -> pure []

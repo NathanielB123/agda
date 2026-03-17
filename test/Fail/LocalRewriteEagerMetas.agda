@@ -1,4 +1,4 @@
-{-# OPTIONS --local-rewriting  #-}
+{-# OPTIONS --local-rewriting --rewriting #-}
 
 open import Agda.Builtin.Nat
 open import Agda.Builtin.Equality
@@ -15,7 +15,10 @@ foo f x = _
 
 module M (f : Nat → Nat) (x : Nat) (@rewrite r : f x ≡ 0) where
 
-  solve : foo f x ≡ 0
-  solve = refl
+  solve1 : foo f x ≡ 0
+  solve1 = refl
+
+  solve2 : foo f x ≡ f x
+  solve2 = refl
 
 MUTUAL = Set

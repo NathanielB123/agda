@@ -379,6 +379,9 @@ instance Match NLPat Term where
             (addContext k $ prettyTCM v)) $ case v of
         -- Either we are matching a higher order bound variable in k or we
         -- are matching a locally bound variable outside gamma
+        -- (gamma is the rewrite telescope - i.e. the telescope of pattern
+        -- variables which are in scope in the pattern but not in the term we
+        -- matching against)
         Var i' es |  (i < size k && i == i')
                   || (i >= size k && i == i' + size gamma) -> do
           ti <- addContext gamma $ addContext k $ typeOfBV i

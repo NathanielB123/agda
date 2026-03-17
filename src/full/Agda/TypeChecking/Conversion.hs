@@ -556,6 +556,18 @@ computeElimHeadType :: MonadConversion m => QName -> Elims -> Elims -> m Type
 computeElimHeadType f [] es' = computeDefType f es'
 computeElimHeadType f es _   = computeDefType f es
 
+-- | Compute the type of a rewrite rule head. For projection-like
+--   functions, this requires inferring the type of the principal argument,
+--   using the eliminations.
+computeRewHeadType :: MonadConversion m
+  => Int          -- Size of the "rewrite rule telescope"
+  -> RewriteHead  -- Rewrite rule head we want to compute the type of
+  -> Elims        -- Eliminations
+  -> Elims        -- Alternative eliminations, used if the first is empty
+  -> m Type
+computeRewHeadType telSize (RewDefHead f) es es' = computeElimHeadType f es es'
+computeRewHeadType telSize (RewVarHead x) es es' = typeOfBV $ x + telSize
+
 -- | Syntax directed equality on atomic values
 --
 compareAtom :: forall m. MonadConversion m => Comparison -> CompareAs -> Term -> Term -> m ()

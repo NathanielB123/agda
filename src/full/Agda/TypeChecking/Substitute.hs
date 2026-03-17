@@ -912,7 +912,7 @@ instance (Subst a, Subst b, SubstArg a ~ SubstArg b) => Subst (Type'' a b) where
   type SubstArg (Type'' a b) = SubstArg a
   applySubst rho (El s t) = applySubst rho s `El` applySubst rho t
 
-instance (Subst a) => Subst (Sort' a) where
+instance Subst a => Subst (Sort' a) where
   type SubstArg (Sort' a) = SubstArg a
   applySubst rho = \case
     Univ u n   -> Univ u $ sub n

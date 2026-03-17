@@ -1,5 +1,4 @@
 {-# OPTIONS_GHC -Wunused-imports #-}
-{-# LANGUAGE EmptyCase #-}
 
 module Agda.TypeChecking.Substitute.DeBruijn where
 

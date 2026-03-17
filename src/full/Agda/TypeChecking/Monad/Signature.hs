@@ -1008,13 +1008,13 @@ getAllRewriteRulesForDefHead f =
                 (instantiateRewriteRules =<< getGlobalRewriteRulesFor f)) <*>
               getLocalRewriteRulesFor (RewDefHead f)
   where
-    justTheRule :: GlobalRewriteRule -> Maybe (RewriteRule)
+    justTheRule :: GlobalRewriteRule -> Maybe RewriteRule
     justTheRule (GlobalRewriteRule _ g q ps rhs t isClause _)
       | isClause  = Nothing
       | otherwise = pure $ RewriteRule g (RewDefHead q)  ps rhs t
 
 -- | A local rewrite rule forces us to consider the definition as defined
---   by copatterns
+--   by copatterns (see #3812 for an example case with global rewrite rules)
 --   This is necessary because binding local rewrite rules does not update
 --   defCopatternLHS'
 rewUsesCopatterns :: HasConstInfo m => RewriteHead -> m Bool

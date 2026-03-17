@@ -74,6 +74,7 @@ import Agda.Utils.Float
 import Agda.Utils.Lens
 import Agda.Utils.List
 import Agda.Utils.Maybe
+import Agda.Utils.Memo (memoUnsafeInt)
 import Agda.Utils.Monad
 import Agda.Utils.Null (empty, null)
 import Agda.Utils.Functor
@@ -424,23 +425,6 @@ memoQName f = unsafePerformIO $ do
           writeIORef tbl (Map.insert i y m)
           return y
 
--- Int memo ---------------------------------------------------------------
-
-{-# NOINLINE memoInt #-}
-memoInt :: (Int -> a) -> (Int -> a)
-memoInt f = unsafePerformIO $ do
-  tbl <- newIORef IntMap.empty
-  return (unsafePerformIO . f' tbl)
-  where
-    f' tbl x = do
-      m <- readIORef tbl
-      case IntMap.lookup x m of
-        Just y  -> return y
-        Nothing -> do
-          let y = f x
-          writeIORef tbl (IntMap.insert x y m)
-          return y
-
 -- * Fast reduction
 
 data Normalisation = WHNF | NF
@@ -489,7 +473,7 @@ fastReduce' norm v = do
     if rwrLoc then getAllRewriteRulesForVarHead x else return []
 
   ReduceM $ \ redEnv ->
-    reduceTm redEnv bEnv (memoQName constInfo) (memoInt localRewr) norm v
+    reduceTm redEnv bEnv (memoQName constInfo) (memoUnsafeInt localRewr) norm v
 
 -- * Closures
 
