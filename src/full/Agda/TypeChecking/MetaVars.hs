@@ -45,6 +45,7 @@ import Agda.TypeChecking.EtaContract
 import Agda.TypeChecking.SizedTypes (boundedSizeMetaHook, isSizeProblem)
 import {-# SOURCE #-} Agda.TypeChecking.CheckInternal
 import {-# SOURCE #-} Agda.TypeChecking.Conversion
+import Agda.TypeChecking.Warnings (warning)
 
 -- import Agda.TypeChecking.CheckInternal
 -- import {-# SOURCE #-} Agda.TypeChecking.CheckInternal (checkInternal)
@@ -881,7 +882,9 @@ assign dir x args v target = addOrUnblocker (unblockOnMeta x) $ do
 
   -- Instantiating metas with @rewrite functions is never allowed to ensure
   -- quantification is always prenex
-  when (isRewPi v) $ patternViolation neverUnblock
+  when (isRewPi v) $ do
+    warning $ InferredLocalRewrite x v
+    patternViolation neverUnblock
 
   -- Jesper, 2019-09-13: When --no-sort-comparison is enabled,
   -- we equate the sort of the solution with the sort of the

@@ -150,6 +150,7 @@ instance EmbPrj Warning where
     DefinitionBeforeDeclaration x               -> icodeN 76 DefinitionBeforeDeclaration x
     RecursiveRecordNeedsInductivity{}           -> __IMPOSSIBLE__  -- Error warning
     IgnoringRew a b                             -> icodeN 77 IgnoringRew a b
+    InferredLocalRewrite a b                    -> icodeN 78 InferredLocalRewrite a b
 
   value = vcase $ \ case
     N3 0 a b      -> valuN UnreachableClauses a b
@@ -231,6 +232,7 @@ instance EmbPrj Warning where
     N3 75 a b     -> valuN UnusedImports a b
     N2 76 a       -> valuN DefinitionBeforeDeclaration a
     N3 77 a b     -> valuN IgnoringRew a b
+    N3 78 a b     -> valuN InferredLocalRewrite a b
     _ -> malformed
 
 instance EmbPrj UselessPublicReason

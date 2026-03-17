@@ -513,6 +513,7 @@ warningHighlighting' b w = case tcWarning w of
   IllegalRewriteRule (GlobalRewrite x)  _ -> deadcodeHighlighting (defName x)
   IllegalRewriteRule (LocalRewrite _ x _) _ -> deadcodeHighlighting x
   NotARewriteRule x _        -> deadcodeHighlighting x
+  InferredLocalRewrite _ _   -> mempty
   PragmaCompileErased{}      -> deadcodeHighlighting w
   PragmaCompileList{}        -> deadcodeHighlighting w
   PragmaCompileMaybe{}       -> deadcodeHighlighting w

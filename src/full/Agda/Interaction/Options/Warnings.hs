@@ -201,6 +201,7 @@ errorWarnings = Set.fromList
   , RewriteAmbiguousRules_
   , RewriteMissingRule_
   , LocalRewriteOutsideTelescope_
+  , InferredLocalRewrite_
   , TopLevelPolarity_
 
   -- Recoverable parse errors
@@ -375,6 +376,7 @@ data WarningName
   | RewriteMissingRule_
   | DuplicateRewriteRule_
   | LocalRewriteOutsideTelescope_
+  | InferredLocalRewrite_
   | SafeFlagEta_
   | SafeFlagInjective_
   | SafeFlagNoCoverageCheck_
@@ -631,6 +633,7 @@ warningNameDescription = \case
   RewriteMissingRule_              -> "Failed global confluence checks because of missing rule."
   DuplicateRewriteRule_            -> "Duplicate rewrite rules."
   LocalRewriteOutsideTelescope_    -> "'@rewrite' arguments are (currently) only allowed in module telescopes."
+  InferredLocalRewrite_            -> "Tried to solve a meta with an '@rewrite' function."
   SafeFlagEta_                     -> "`ETA' pragmas with the safe flag."
   SafeFlagInjective_               -> "`INJECTIVE' pragmas with the safe flag."
   SafeFlagNoCoverageCheck_         -> "`NON_COVERING` pragmas with the safe flag."

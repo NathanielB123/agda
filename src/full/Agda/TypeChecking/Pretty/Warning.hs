@@ -591,6 +591,14 @@ prettyWarning = \case
         ]
       ]
 
+    InferredLocalRewrite m v -> vcat
+      [ fsep $ pwords "Tried to solve"
+      , nest 2 $ prettyTCM m
+      , fsep $ pwords "with the following function (containing a local rewrite rule parameter):"
+      , nest 2 $ prettyTCM v
+      , fsep $ pwords "Local rewrite rules must be explicitly annotated (never inferred)."
+      , fsep $ pwords "Please annotate all local rewrite rules explicitly." ]
+
     DuplicateRecordDirective dir ->
       "Ignoring duplicate record directive: " <+> pretty dir
 
