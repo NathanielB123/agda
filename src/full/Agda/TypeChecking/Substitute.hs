@@ -838,35 +838,38 @@ renameP :: Subst a => Impossible -> Permutation -> a -> a
 renameP err p = applySubst (renaming err p)
 
 -- | Polymorphic substitution
+--   I.e. Substitutions which can be applied to any 'a' where
+--   'DeBruijn (SubstArg a)'
+--   Used to encode not-necessarily-surjective renamings ('Permutation' is
+--   always assumed to be surjective)
 data AnySubstitution = AnySub
   { getSub :: forall a. DeBruijn a => Substitution' a }
 
 -- | Attempts to convert a substitution into a renaming. Returns Nothing if
 --   any of the variables in the set are mapped to non-variable terms.
+--   Variables not in the set are strengthened-away.
 --   Returns a polymorphic substitution.
 toRenOn :: DeBruijn a => VarSet -> Substitution' a -> Maybe AnySubstitution
 toRenOn vars rho = go 0 rho
   where
     go x IdS        = Just $ AnySub $ IdS
     go x (EmptyS i) = Just $ AnySub $ EmptyS i
-    go x (t :# rho) = case go (x + 1) rho of
-      Just (AnySub rho') | Just y <- deBruijnView t ->
+    go x (t :# rho) = do
+      AnySub rho' <- go (x + 1) rho
+      if x `VarSet.member` vars
+      then do
+        y <- deBruijnView t
         Just $ AnySub $ deBruijnVar y :# rho'
-      Just (AnySub rho') | not (x `VarSet.member` vars) ->
-        Just $ AnySub $ __IMPOSSIBLE__ :# rho'
-      _ -> Nothing
-    go x (Strengthen i n rho)
-      | Just (AnySub rho') <- go (x + n) rho =
-        Just $ AnySub $ Strengthen i n rho'
-      | otherwise = Nothing
-    go x (Wk n rho)
-      | Just (AnySub rho') <- go x rho =
-        Just $ AnySub $ Wk n rho'
-      | otherwise = Nothing
-    go x (Lift n rho)
-      | Just (AnySub rho') <- go (x + n) rho =
-        Just $ AnySub $ Lift n rho'
-      | otherwise = Nothing
+      else Just $ AnySub $ Strengthen __IMPOSSIBLE__ 1 rho'
+    go x (Strengthen i n rho) = do
+      AnySub rho' <- go (x + n) rho
+      Just $ AnySub $ Strengthen i n rho'
+    go x (Wk n rho) = do
+      AnySub rho' <- go x rho
+      Just $ AnySub $ Wk n rho'
+    go x (Lift n rho) = do
+      AnySub rho' <- go (x + n) rho
+      Just $ AnySub $ Lift n rho'
 
 instance EndoSubst a => Subst (Substitution' a) where
   type SubstArg (Substitution' a) = a
