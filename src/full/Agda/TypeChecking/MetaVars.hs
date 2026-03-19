@@ -1736,8 +1736,10 @@ data InvertExcept
 --   Linearity, i.e., whether the substitution is deterministic,
 --   has to be checked separately.
 --
-inverseSubst' :: (Term -> Bool) -> Tele (Dom Type) -> Args -> ExceptT InvertExcept TCM SubstCand
-inverseSubst' skip mTel args = map (first unArg) <$> loop (zip args terms)
+inverseSubst' ::
+     (Term -> Bool) -> Tele (Dom Type) -> Args
+  -> ExceptT InvertExcept TCM SubstCand
+inverseSubst' skip tel args = map (first unArg) <$> loop (zip args terms)
   where
   loop  = foldM isVarOrIrrelevant []
   terms = map var (downFrom (size args))
@@ -1747,9 +1749,11 @@ inverseSubst' skip mTel args = map (first unArg) <$> loop (zip args terms)
       , "  aborting assignment" ]
     throwError (CantInvert c)
   neutralArg = throwError NeutralArg
-  -- We need to identify variable arguments to the meta that are
-  -- constrained by local rewrite rules
-  constrained = rewConstrained mTel
+  -- We need to identify arguments to the meta that are fully constrained by
+  -- local rewrite rules
+  -- These are simply ignored when building the inverse substitution
+  -- (analogously to irrelevant arguments)
+  constrained = rewConstrained tel
 
   isVarOrIrrelevant :: Res -> (Arg Term, Term) -> ExceptT InvertExcept TCM Res
   isVarOrIrrelevant vars (Arg info v, Var x [])
