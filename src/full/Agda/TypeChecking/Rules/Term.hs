@@ -5,7 +5,7 @@ module Agda.TypeChecking.Rules.Term where
 import Prelude hiding ( null )
 
 import Control.Monad.Except ( MonadError(..) )
-import Control.Monad.Trans.Maybe ( runMaybeT )
+import Control.Monad.Trans.Maybe ( runMaybeT, MaybeT (..) )
 
 import Data.Maybe
 import qualified Data.DList as DL
@@ -59,7 +59,9 @@ import Agda.TypeChecking.Quote
 import Agda.TypeChecking.RecordPatterns
 import Agda.TypeChecking.Records
 import Agda.TypeChecking.Reduce
-import Agda.TypeChecking.Rewriting (checkEquationValid, checkLocalRewriteRule)
+import Agda.TypeChecking.Rewriting ( checkEquationValid
+                                   , checkLocalRewriteRule
+                                   , occursCheckSmartWithRewriteRule)
 import Agda.TypeChecking.Rules.LHS
 import Agda.TypeChecking.SizedTypes
 import Agda.TypeChecking.SizedTypes.Solve
@@ -346,23 +348,15 @@ checkDomain lamOrPi n xs e = do
   -- For now, we disallow '@rewrite' domains on pi types
   -- In the future, this should be allowed only when the pi type is not in
   -- higher-order position (checked syntactically)
+
+    rewMatches <- localRewriteMatchesOption
     r <- case lamOrPi of
-      PiNotLam | isRewrite r -> IsNotRewrite <$
+      -- TODO: Disabling this check on 'rewMatches' is a hack
+      PiNotLam | isRewrite r && not rewMatches -> IsNotRewrite <$
         runMaybeT (illegalRule s LocalRewriteOutsideTelescope)
       _                      -> pure r
 
-    eq  <- checkEquationValid s r t
-    rew <- traverse (checkLocalRewriteRule s) eq
-    -- We do not (currently) distinguish failing to elaborate to a LocalEquation
-    -- from failing to elaborate to a RewriteRule. In the case we have
-    -- a valid LocalEquation, but failed to produce a RewriteRule, we could
-    -- technically still store the LocalEquation and check the convertibility
-    -- constraint at call sites. I don't think this is super important, but
-    -- maybe worth trying in future.
-    let rDom = RewDom <$> eq <*> fmap pure (join rew)
-    whenJust rDom \rDom' -> reportSDoc "rewriting" 30 $
-      "Successfully elaborated: " <+> prettyTCM (rewDomEq rDom') <+>
-        " into a rewrite rule"
+    rDom <- checkRewDom LRewUserWritten n r t
 
     return (rDom, t)
   where
@@ -372,6 +366,21 @@ checkDomain lamOrPi n xs e = do
         -- modify the new context entries
         modEnv (LamNotPi _) = workOnTypes
         modEnv PiNotLam     = id
+
+
+checkRewDom ::
+  LocalRewriteOrigin -> Maybe Name -> RewriteAnn -> Type -> TCM (Maybe RewDom)
+checkRewDom o n r t = do
+  cxt <- getContext
+  let s = LocalRewrite cxt n t
+
+  eq  <- checkEquationValid s r t
+  rew <- traverse (checkLocalRewriteRule o s) eq
+  let rDom = RewDom o <$> eq <*> fmap pure (join rew)
+  whenJust rDom \rDom' -> reportSDoc "rewriting" 30 $
+      "Successfully elaborated: " <+> prettyTCM (rewDomEq rDom') <+>
+        " into a rewrite rule"
+  pure rDom
 
 checkPiDomain :: (LensLock a, LensModality a,  LensRewriteAnn a)
               => Maybe Name -> List1 a -> A.Expr -> TCM (Maybe RewDom, Type)
