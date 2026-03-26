@@ -18,7 +18,7 @@ class MonadTCEnv m => MonadAddContext m where
   addCtx :: Name -> Dom Type -> m a -> m a
   addLetBinding' :: IsAxiom -> Origin -> Name -> Term -> Dom Type -> m a -> m a
   addLocalRewrite :: RewriteRule -> m a -> m a
-  updateContext :: Substitution -> (Context -> Context) -> m a -> m a
+  updateContext' :: RefreshRews -> Substitution -> (Context -> Context) -> m a -> m a
   withFreshName :: Range -> ArgName -> (Name -> m a) -> m a
 
   default addCtx
@@ -36,10 +36,10 @@ class MonadTCEnv m => MonadAddContext m where
     => RewriteRule -> m a -> m a
   addLocalRewrite r = liftThrough $ addLocalRewrite r
 
-  default updateContext
+  default updateContext'
     :: (MonadAddContext n, MonadTransControl t, t n ~ m)
-    => Substitution -> (Context -> Context) -> m a -> m a
-  updateContext sub f = liftThrough $ updateContext sub f
+    => RefreshRews -> Substitution -> (Context -> Context) -> m a -> m a
+  updateContext' r sub f = liftThrough $ updateContext' r sub f
 
   default withFreshName
     :: (MonadAddContext n, MonadTransControl t, t n ~ m)

@@ -285,6 +285,7 @@ instance EmbPrj IllegalRewriteRuleReason where
     BeforeMutualFunctionDefinition a            -> icodeN 14 BeforeMutualFunctionDefinition a
     DuplicateRewriteRule                        -> icodeN 15 DuplicateRewriteRule
     LocalRewriteOutsideTelescope                -> icodeN 16 LocalRewriteOutsideTelescope
+    SmartWithOccursFail                         -> icodeN 17 SmartWithOccursFail
 
   value = vcase $ \case
     N1 0     -> valuN LHSNotDefinitionOrConstructor
@@ -304,6 +305,7 @@ instance EmbPrj IllegalRewriteRuleReason where
     N2 14 a  -> valuN BeforeMutualFunctionDefinition a
     N1 15    -> valuN DuplicateRewriteRule
     N1 16    -> valuN LocalRewriteOutsideTelescope
+    N1 17    -> valuN SmartWithOccursFail
     _        -> malformed
 
 instance EmbPrj OptionWarning where
@@ -580,6 +582,8 @@ instance EmbPrj PragmaOptions where
     (_optEraseRecordParameters o)
     (_optRewriting o)
     (_optLocalRewriting o)
+    (_optLocalRewriteMatches o)
+    (_optSmartWith o)
     (_optCubical o)
     (_optGuarded o)
     (_optFirstOrder o)
