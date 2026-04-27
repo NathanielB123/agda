@@ -5925,6 +5925,8 @@ data TypeError
             --   an error occurred, possibly due to non-confluence of rewrite rules.
             --   This was a @GenericDocError@ before.
         | IncorrectTypeForRewriteRelation QName IncorrectTypeForRewriteRelationReason
+        | InvalidatedLocalRewriteRule
+        -- ^ TODO: Error messages
     -- Cubical errors
         | CannotGenerateHCompClause Type
             -- ^ Cannot generate @hcomp@ clause because type is not fibrant.
