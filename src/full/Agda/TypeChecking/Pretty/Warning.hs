@@ -545,6 +545,11 @@ prettyWarning = \case
           , pwords "local rewrite rules are (currently) only allowed in module telescopes. Consider creating an anonymous module"
           ]
 
+        SmartWithOccursFail -> (fsep . concat)
+          [ illegalSince q
+          , pwords "the LHS occurs in the RHS or an earlier 'smart with' rewrite rule"
+          ]
+
     ConfluenceCheckingIncompleteBecauseOfMeta f -> (fsep . concat)
       [ pwords "Confluence checking incomplete because the definition of"
       , [ prettyTCM f ]

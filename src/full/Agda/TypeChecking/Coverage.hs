@@ -770,7 +770,10 @@ isDatatype ind at = do
         Datatype{dataSort = s, dataPars = np, dataCons = cs}
           | otherwise -> do
               let (ps, is) = splitAt np args
-              return (IsData, d, s, ps, is, cs, not $ null (dataPathCons $ theDef def))
+              -- The sort is allowed to depend on parameters, so we need to
+              -- apply a substitution
+              let s' = applySubst (parallelS $ reverse $ map' unArg ps) s
+              return (IsData, d, s', ps, is, cs, not $ null (dataPathCons $ theDef def))
         Record{recPars = np, recConHead = con, recInduction = i, recEtaEquality'}
           | i == Just CoInductive && ind /= CoInductive ->
               throw CoinductiveDatatype
@@ -1100,9 +1103,13 @@ computeNeighbourhood delta1 n delta2 d pars ixs hix tel ps cps c = do
 
       -- Compute final context and substitution
       let rho3    = consS conp rho1            -- Δ₁' ⊢ ρ₃ : Δ₁(x:D)
-          delta2' = applySplitPSubst rho3 delta2  -- Δ₂' = Δ₂ρ₃
-          delta'  = delta1' `abstract` delta2' -- Δ'  = Δ₁'Δ₂'
           rho     = liftS (size delta2) rho3   -- Δ' ⊢ ρ : Δ₁(x:D)Δ₂
+
+      -- Δ₂' = Δ₂ρ₃
+      delta2' <- addContext delta1' $ liftTCM $
+        substTelRecheck (fromPatternSubstitution $ fromSplitPSubst rho3) delta2
+
+      let delta'  = delta1' `abstract` delta2' -- Δ'  = Δ₁'Δ₂'
 
       debugTel "delta'" delta'
       debugSubst "rho" rho
@@ -1436,8 +1443,10 @@ split' checkEmpty ind allowPartialCover inserttrailing
 
   where
     inContextOfT, inContextOfDelta2 :: (MonadAddContext tcm) => tcm a -> tcm a
-    inContextOfT      = addContext tel . escapeContext impossible (x + 1)
-    inContextOfDelta2 = addContext tel . escapeContext impossible x
+    inContextOfT      = addContext tel .
+      refreshLocalRewriteRules . escapeContext impossible (x + 1)
+    inContextOfDelta2 = addContext tel .
+      refreshLocalRewriteRules . escapeContext impossible x
 
     -- Debug printing
     debugInit tel x ps cps = liftTCM $ inTopContext $ do

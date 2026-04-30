@@ -5489,6 +5489,7 @@ illegalRewriteWarningName = \case
   BeforeMutualFunctionDefinition{}     -> RewriteBeforeMutualFunctionDefinition_
   DuplicateRewriteRule                 -> DuplicateRewriteRule_
   LocalRewriteOutsideTelescope         -> LocalRewriteOutsideTelescope_
+  SmartWithOccursFail{}                -> SmartWithOccursFail_
 
 -- | Should warnings of that type be serialized?
 --
@@ -5813,6 +5814,8 @@ data TypeError
             --   an error occurred, possibly due to non-confluence of rewrite rules.
             --   This was a @GenericDocError@ before.
         | IncorrectTypeForRewriteRelation Term IncorrectTypeForRewriteRelationReason
+        | InvalidatedLocalRewriteRule
+        -- ^ TODO: Error messages
     -- Cubical errors
         | CannotGenerateHCompClause Type
             -- ^ Cannot generate @hcomp@ clause because type is not fibrant.
@@ -6112,6 +6115,22 @@ data InductionAndEta = InductionAndEta
   , recordEtaEquality :: EtaEquality
   } deriving (Show, Generic)
 
+-- | Should we refresh local rewrite rules (i.e. they might have been
+--   invalidated)
+data RefreshRews = RefreshRews | RetainRews
+
+instance Semigroup RefreshRews where
+  RefreshRews <> _ = RefreshRews
+  RetainRews  <> i = i
+
+instance Monoid RefreshRews where
+  mappend = (<>)
+  mempty  = RetainRews
+
+refreshRews :: RefreshRews -> Bool
+refreshRews RefreshRews = True
+refreshRews RetainRews  = False
+
 -- Source of the rewrite rule
 data RewriteSource
   = GlobalRewrite Definition
@@ -6141,6 +6160,8 @@ data IllegalRewriteRuleReason
   | BeforeMutualFunctionDefinition QName
   | DuplicateRewriteRule
   | LocalRewriteOutsideTelescope
+  | SmartWithOccursFail
+  -- ^ TODO: Make this error message not awful
     deriving (Show, Generic)
 
 -- | Boolean flag whether a name is ambiguous.
@@ -6274,9 +6295,21 @@ localRewritingOption :: HasOptions m => m Bool
 localRewritingOption = optLocalRewriting <$> pragmaOptions
 {-# INLINE localRewritingOption #-}
 
+smartWithOption :: HasOptions m => m Bool
+smartWithOption = optSmartWith <$> pragmaOptions
+{-# INLINE smartWithOption #-}
+
+anyLocalRewritingOption :: HasOptions m => m Bool
+anyLocalRewritingOption = (||) <$> localRewritingOption <*> smartWithOption
+{-# INLINE anyLocalRewritingOption #-}
+
+localRewriteMatchesOption :: HasOptions m => m Bool
+localRewriteMatchesOption = optLocalRewriteMatches <$> pragmaOptions
+{-# INLINE localRewriteMatchesOption #-}
+
 -- | Local or global rewriting is enabled
 anyRewritingOption :: HasOptions m => m Bool
-anyRewritingOption = (||) <$> rewritingOption <*> localRewritingOption
+anyRewritingOption = (||) <$> rewritingOption <*> anyLocalRewritingOption
 {-# INLINE anyRewritingOption #-}
 
 
