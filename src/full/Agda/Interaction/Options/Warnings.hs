@@ -355,6 +355,7 @@ data WarningName
   | NoMain_
   | NotARewriteRule_
   | RewriteLHSNotDefinitionOrConstructor_
+  | RewriteLHSNotNeutral_
   | RewriteVariablesNotBoundByLHS_
   | RewriteVariablesBoundMoreThanOnce_
   | RewriteVariablesBoundInSingleton_
@@ -378,6 +379,7 @@ data WarningName
   | DuplicateRewriteRule_
   | LocalRewriteOutsideTelescope_
   | SmartWithOccursFail_
+  | RewriteRHSContainsClosures_
   | InferredLocalRewrite_
   | SafeFlagInjective_
   | SafeFlagNoCoverageCheck_
@@ -616,6 +618,8 @@ warningNameDescription = \case
   NoMain_                          -> "Compilation of modules that do not define `main'."
   NotARewriteRule_                 -> "`REWRITE pragmas referring to identifiers that are neither definitions nor constructors.'"
   RewriteLHSNotDefinitionOrConstructor_             -> "Rewrite rule head symbol is not a defined symbol or constructor."
+  RewriteLHSNotNeutral_                             -> "'Smart with'-introduced rewrite rule LHS is not neutral."
+  RewriteRHSContainsClosures_                       -> "'Smart with'-introduced rewrite rule RHS contains unguarded lambdas."
   RewriteVariablesNotBoundByLHS_                    -> "Rewrite rule does not bind all of its variables."
   RewriteVariablesBoundMoreThanOnce_                -> "Constructor-headed rewrite rule has non-linear parameters."
   RewriteVariablesBoundInSingleton_                 -> "Rewrite rule binds some variables in possibly definitionally singular contexts."
