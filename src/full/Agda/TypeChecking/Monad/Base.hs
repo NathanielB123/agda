@@ -6167,10 +6167,15 @@ isSmartWithRewrite (LocalRewrite i)  = case lrewInfoOrigin i of
 isSmartWithRewrite (GlobalRewrite _) =
   False
 
+data RewriteLHSNotNeutralReason
+  = LHSConstructorHeaded
+  | LHSUnderapplied
+  deriving (Show, Generic, Enum, Bounded)
+
 -- Reason, why rewrite rule is invalid
 data IllegalRewriteRuleReason
   = LHSNotDefinitionOrConstructor
-  | LHSNotNeutral
+  | LHSNotNeutral RewriteLHSNotNeutralReason
   -- ^ For now this error message only applies to '--smart-with' rewrite rules
   -- I think it might make sense to extend this to other rewrite rules in the
   -- future (non-neutral LHSs are kinda broken)
@@ -7509,6 +7514,7 @@ instance NFData LHSOrPatSyn
 instance NFData InductionAndEta
 instance NFData RewriteOrigin
 instance NFData LocalRewriteInfo
+instance NFData RewriteLHSNotNeutralReason
 instance NFData IllegalRewriteRuleReason
 instance NFData IncorrectTypeForRewriteRelationReason
 instance NFData GHCBackendError
