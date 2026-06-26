@@ -8,7 +8,7 @@
 
 module Agda.TypeChecking.Rewriting.NonLinPattern where
 
-import Prelude hiding ( null )
+import Prelude hiding ( null, unzip )
 
 import Data.Foldable (Foldable(fold))
 
@@ -34,7 +34,6 @@ import Agda.Utils.List
 import Agda.Utils.Monad
 import Agda.Utils.Null
 import Agda.Utils.Singleton
-import Agda.Utils.Size
 import qualified Agda.Utils.SmallSet as SmallSet
 import qualified Agda.Utils.VarSet as VarSet
 import Agda.Utils.VarSet (VarSet)
@@ -59,31 +58,22 @@ instance (PatternFrom a b) => PatternFrom (Arg a) (Arg b) where
     = let r1' = r1 `maxDefSing` relToDefSing (getRelevance u)
       in  traverse (patternFrom r0 r1' k0 k1 $ unDom t) u
 
+instance PatternFrom TypedElim PElim where
+  patternFrom r0 r1 k0 k1 () = \case
+    Apply (Arg ai (u, a)) -> do
+      p <- patternFrom r0 r1 k0 k1 a $ Arg ai u
+      pure $ Apply p
+    IApply (x, _) (y, _) (i, it) -> do
+      p <- patternFrom r0 r1 k0 k1 (unDom it) i
+      pure $ IApply (PTerm x) (PTerm y) p
+    Proj o f -> pure $ Proj o f
+
+instance PatternFrom TypedElims PElims where
+  patternFrom r0 r1 k0 k1 () es = traverse (patternFrom r0 r1 k0 k1 ()) es
+
 instance PatternFrom Elims PElims where
-  patternFrom r0 r1 k0 k1 (t,hd) = \case
-    [] -> return []
-    (Apply u : es) -> do
-      (a, b) <- assertPi t
-      p   <- patternFrom r0 r1 k0 k1 a u
-      let t'  = absApp b (unArg u)
-      let hd' = hd . (Apply u:)
-      ps  <- patternFrom r0 r1 k0 k1 (t',hd') es
-      return $ Apply p : ps
-    (IApply x y i : es) -> do
-      (s, q, l, b, u, v) <- assertPath t
-      let t' = El s $ unArg b `apply` [ defaultArg i ]
-      let hd' = hd . (IApply x y i:)
-      interval <- primIntervalType
-      p   <- patternFrom r0 r1 k0 k1 interval i
-      ps  <- patternFrom r0 r1 k0 k1 (t',hd') es
-      return $ IApply (PTerm x) (PTerm y) p : ps
-    (Proj o f : es) -> do
-      (a,b) <- assertProjOf f t
-      let u = hd []
-          t' = b `absApp` u
-      hd' <- applyDef o f (argFromDom a $> u)
-      ps  <- patternFrom r0 r1 k0 k1 (t',applyE hd') es
-      return $ Proj o f : ps
+  patternFrom r0 r1 k0 k1 (t,hd) es =
+    patternFrom r0 r1 k0 k1 () =<< typedElims t hd es
 
 instance (PatternFrom a b) => PatternFrom (Dom a) (Dom b) where
   patternFrom r0 r1 k0 k1 t = traverse $ patternFrom r0 r1 k0 k1 t
@@ -155,14 +145,13 @@ instance PatternFrom Term NLPat where
            PBoundVar i <$> patternFrom r1 r1 k0 k1 (t , Var i) es
        -- The arguments of `var i` should be distinct bound variables
        -- in order to build a Miller pattern
-       | Just vs <- allApplyElims es -> do
-           TelV tel rest <- telViewPath =<< typeOfBV i
-           unless (natSize tel >= natSize vs) $ blockOnMetasIn rest >> addContext tel (errNotPi rest)
-           let ts = applySubst (parallelS $ reverse $ map unArg vs) $ map unDom $ flattenTel tel
-           mbvs <- forM (zip ts vs) $ \(t , v) -> do
+       | otherwise -> do
+           t <- typeOfBV i
+           vs <- argsFromElims <$> typedElims t (Var i) es
+           mbvs <- forM vs $ \(Arg ai (v , t)) -> do
              blockOnMetasIn (v,t)
-             isEtaVar (unArg v) t >>= \case
-               Just j | k0 < j || j < k1 -> return $ Just $ v $> j
+             isEtaVar v (unDom t) >>= \case
+               Just j | k0 < j || j < k1 -> return $ Just $ Arg ai v $> j
                _                         -> return Nothing
            case sequence mbvs of
              Just bvs | fastDistinct bvs -> do
@@ -175,7 +164,6 @@ instance PatternFrom Term NLPat where
                  -- If only the variable itself might be definitionally singular
                  -- that is not a problem.
              _ -> done
-       | otherwise -> done
       (_ , _ ) | Just (d, pars) <- etaRecord -> do
         RecordDefn def <- theDef <$> getConstInfo d
         (tel, c, ci, vs) <- etaExpandRecord_ d pars def v
@@ -372,6 +360,39 @@ instance GetMatchables Term where
 
 instance GetMatchables GlobalRewriteRule where
   getMatchables = getMatchables . grPats
+
+type TypedElim = Elim' (Term, Dom Type)
+type TypedElims = [TypedElim]
+type instance TypeOf TypedElim  = ()
+type instance TypeOf TypedElims = ()
+
+-- | Annotates all 'Apply' elims with types
+typedElims :: Type -> (Elims -> Term) -> Elims -> TCM TypedElims
+typedElims t hd [] = pure []
+typedElims t hd (Apply u : es) = do
+  (a, b) <- assertPi t
+  let t'  = absApp b (unArg u)
+      hd' = hd . (Apply u:)
+  us <- typedElims t' hd' es
+  pure (Apply ((, a) <$> u) : us)
+typedElims t hd (IApply x y i : es) = do
+  (s, q, l, Arg _ b, u, v) <- assertPath t
+  let hd' = hd . (IApply x y i:)
+  interval <- primIntervalType
+  i0       <- primIZero
+  i1       <- primIOne
+  let t'    = El s $ b `apply1` i
+      lhsTy = defaultDom $ El s $ b `apply1` i0
+      rhsTy = defaultDom $ El s $ b `apply1` i1
+  us  <- typedElims t' hd' es
+  return $ IApply (x , lhsTy) (y , rhsTy) (i, defaultDom interval) : us
+typedElims t hd (Proj o f : es) = do
+  (a,b) <- assertProjOf f t
+  let u = hd []
+      t' = b `absApp` u
+  hd' <- applyDef o f (argFromDom a $> u)
+  us  <- typedElims t' (applyE hd') es
+  return $ Proj o f : us
 
 -- Throws a pattern violation if the given term contains any
 -- metavariables.

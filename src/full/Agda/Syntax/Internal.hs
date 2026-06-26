@@ -1416,7 +1416,8 @@ data NLPat
   | PTerm Term
     -- ^ Matches the term modulo β (ideally βη).
   deriving (Show, Generic)
-type PElims = [Elim' NLPat]
+type PElim  = Elim' NLPat
+type PElims = [PElim]
 
 
 type instance TypeOf NLPat = Type
