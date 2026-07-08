@@ -5220,7 +5220,7 @@ data Warning
     -- ^ Confluence checking with @--cubical@ might be incomplete.
   | NotARewriteRule C.QName IsAmbiguous
     -- ^ 'IllegalRewriteRule' detected during scope checking.
-  | IllegalRewriteRule RewriteSource IllegalRewriteRuleReason
+  | IllegalRewriteRule RewriteOrigin IllegalRewriteRuleReason
   | RewriteNonConfluent Term Term Term Doc
     -- ^ Confluence checker found critical pair and equality checking
     --   resulted in a type error
@@ -5481,6 +5481,7 @@ warningName = \case
 illegalRewriteWarningName :: IllegalRewriteRuleReason -> WarningName
 illegalRewriteWarningName = \case
   LHSNotDefinitionOrConstructor{}      -> RewriteLHSNotDefinitionOrConstructor_
+  LHSNotNeutral{}                      -> RewriteLHSNotNeutral_
   VariablesNotBoundByLHS{}             -> RewriteVariablesNotBoundByLHS_
   VariablesBoundMoreThanOnce{}         -> RewriteVariablesBoundMoreThanOnce_
   VariablesBoundInSingleton{}          -> RewriteVariablesBoundInSingleton_
@@ -5497,6 +5498,8 @@ illegalRewriteWarningName = \case
   BeforeMutualFunctionDefinition{}     -> RewriteBeforeMutualFunctionDefinition_
   DuplicateRewriteRule                 -> DuplicateRewriteRule_
   LocalRewriteOutsideTelescope         -> LocalRewriteOutsideTelescope_
+  SmartWithOccursFail{}                -> SmartWithOccursFail_
+  RHSContainsClosures{}                -> RewriteRHSContainsClosures_
 
 -- | Should warnings of that type be serialized?
 --
@@ -5821,6 +5824,8 @@ data TypeError
             --   an error occurred, possibly due to non-confluence of rewrite rules.
             --   This was a @GenericDocError@ before.
         | IncorrectTypeForRewriteRelation Term IncorrectTypeForRewriteRelationReason
+        | InvalidatedLocalRewriteRule
+        -- ^ TODO: Error messages
     -- Cubical errors
         | CannotGenerateHCompClause Type
             -- ^ Cannot generate @hcomp@ clause because type is not fibrant.
@@ -6121,19 +6126,56 @@ data InductionAndEta = InductionAndEta
   , recordEtaEquality :: EtaEquality
   } deriving (Show, Generic)
 
--- Source of the rewrite rule
-data RewriteSource
-  = GlobalRewrite Definition
-  | LocalRewrite Context (Maybe Name) Type
+-- | Should we refresh local rewrite rules (i.e. they might have been
+--   invalidated)
+data RefreshRews = RefreshRews | RetainRews
+
+instance Semigroup RefreshRews where
+  RefreshRews <> _ = RefreshRews
+  RetainRews  <> i = i
+
+instance Monoid RefreshRews where
+  mappend = (<>)
+  mempty  = RetainRews
+
+refreshRews :: RefreshRews -> Bool
+refreshRews RefreshRews = True
+refreshRews RetainRews  = False
+
+data LocalRewriteInfo = LocalRewriteInfo
+  { lrewInfoOrigin  :: LocalRewriteOrigin
+  , lrewInfoContext :: Context
+  , lrewInfoName    :: Maybe Name
+  , lrewInfoType    :: Type
+  }
   deriving (Show, Generic)
 
-isLocalRewrite :: RewriteSource -> Bool
-isLocalRewrite (LocalRewrite g r t) = True
-isLocalRewrite (GlobalRewrite d)    = False
+-- Source of the rewrite rule
+data RewriteOrigin
+  = GlobalRewrite Definition
+  | LocalRewrite LocalRewriteInfo
+  deriving (Show, Generic)
+
+isLocalRewrite :: RewriteOrigin -> Bool
+isLocalRewrite (LocalRewrite  _) = True
+isLocalRewrite (GlobalRewrite _) = False
+
+isSmartWithRewrite :: RewriteOrigin -> Bool
+isSmartWithRewrite (LocalRewrite i)  = lrewSmartWith $ lrewInfoOrigin i
+isSmartWithRewrite (GlobalRewrite _) = False
+
+data RewriteLHSNotNeutralReason
+  = LHSConstructorHeaded
+  | LHSUnderapplied
+  deriving (Show, Generic, Enum, Bounded)
 
 -- Reason, why rewrite rule is invalid
 data IllegalRewriteRuleReason
   = LHSNotDefinitionOrConstructor
+  | LHSNotNeutral RewriteLHSNotNeutralReason
+  -- ^ For now this error message only applies to '--smart-with' rewrite rules
+  -- I think it might make sense to extend this to other rewrite rules in the
+  -- future (non-neutral LHSs are kinda broken)
   | VariablesNotBoundByLHS VarSet
   | VariablesBoundMoreThanOnce VarSet
   | VariablesBoundInSingleton VarSet
@@ -6150,6 +6192,9 @@ data IllegalRewriteRuleReason
   | BeforeMutualFunctionDefinition QName
   | DuplicateRewriteRule
   | LocalRewriteOutsideTelescope
+  | SmartWithOccursFail
+  -- ^ TODO: Make this error message not awful
+  | RHSContainsClosures
     deriving (Show, Generic)
 
 -- | Boolean flag whether a name is ambiguous.
@@ -6283,9 +6328,21 @@ localRewritingOption :: HasOptions m => m Bool
 localRewritingOption = optLocalRewriting <$> pragmaOptions
 {-# INLINE localRewritingOption #-}
 
+smartWithOption :: HasOptions m => m Bool
+smartWithOption = optSmartWith <$> pragmaOptions
+{-# INLINE smartWithOption #-}
+
+anyLocalRewritingOption :: HasOptions m => m Bool
+anyLocalRewritingOption = (||) <$> localRewritingOption <*> smartWithOption
+{-# INLINE anyLocalRewritingOption #-}
+
+localRewriteMatchesOption :: HasOptions m => m Bool
+localRewriteMatchesOption = optLocalRewriteMatches <$> pragmaOptions
+{-# INLINE localRewriteMatchesOption #-}
+
 -- | Local or global rewriting is enabled
 anyRewritingOption :: HasOptions m => m Bool
-anyRewritingOption = (||) <$> rewritingOption <*> localRewritingOption
+anyRewritingOption = (||) <$> rewritingOption <*> anyLocalRewritingOption
 {-# INLINE anyRewritingOption #-}
 
 
@@ -7452,7 +7509,9 @@ instance NFData ClashingName
 instance NFData InvalidFileNameReason
 instance NFData LHSOrPatSyn
 instance NFData InductionAndEta
-instance NFData RewriteSource
+instance NFData RewriteOrigin
+instance NFData LocalRewriteInfo
+instance NFData RewriteLHSNotNeutralReason
 instance NFData IllegalRewriteRuleReason
 instance NFData IncorrectTypeForRewriteRelationReason
 instance NFData GHCBackendError

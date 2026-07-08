@@ -88,6 +88,7 @@ import Agda.Utils.Size
 import Agda.Utils.Tuple
 
 import Agda.Utils.Impossible
+import Agda.Utils.CallStack (HasCallStack)
 
 type CoverM = ExceptT SplitError TCM
 
@@ -770,7 +771,10 @@ isDatatype ind at = do
         Datatype{dataSort = s, dataPars = np, dataCons = cs}
           | otherwise -> do
               let (ps, is) = splitAt np args
-              return (IsData, d, s, ps, is, cs, not $ null (dataPathCons $ theDef def))
+              -- The sort is allowed to depend on parameters, so we need to
+              -- apply a substitution
+              let s' = applySubst (parallelS $ reverse $ map' unArg ps) s
+              return (IsData, d, s', ps, is, cs, not $ null (dataPathCons $ theDef def))
         Record{recPars = np, recConHead = con, recInduction = i, recEtaEquality'}
           | i == Just CoInductive && ind /= CoInductive ->
               throw CoinductiveDatatype
@@ -820,13 +824,15 @@ fixTargetType q tag sc@SClause{ scTel = sctel, scSubst = sigma } target = do
 -- | Add more patterns to split clause if the target type is a function type.
 --   Returns the domains of the function type (if any).
 insertTrailingArgs
-  :: Bool         -- ^ Force insertion even when there is a 'domTactic'?
+  :: HasCallStack
+  => Bool         -- ^ Force insertion even when there is a 'domTactic'?
   -> SplitClause
   -> TCM (Telescope, SplitClause)
 insertTrailingArgs force sc@SClause{ scTel = sctel, scPats = ps, scSubst = sigma, scCheckpoints = cps, scTarget = target } = do
   let fallback = return (empty, sc)
   caseMaybe target fallback $ \ a -> do
     if isJust (domTactic a) && not force then fallback else do
+    reportSDoc "rewriting" 30 $ "sctel: " <+> prettyTCM sctel
     (TelV tel b) <- addContext sctel $ telViewUpTo (-1) $ unDom a
     reportSDoc "tc.cover.target" 15 $ sep
       [ "target type telescope: " <+> do
@@ -929,8 +935,10 @@ computeHCompSplit delta1 n delta2 d pars ixs hix tel ps cps = do
                    ++! applySubst rho2 (teleNamedArgs gamma) -- rho0?
       -- Compute final context and substitution
       let rho3    = consS defp rho1            -- Δ₁' ⊢ ρ₃ : Δ₁(x:D)
-          delta2' = applySplitPSubst rho3 delta2  -- Δ₂' = Δ₂ρ₃
-          delta'  = delta1' `abstract` delta2' -- Δ'  = Δ₁'Δ₂'
+
+      let delta2' = applySubst (fromPatternSubstitution $ fromSplitPSubst rho3) delta2  -- Δ₂' = Δ₂ρ₃
+
+      let delta'  = delta1' `abstract` delta2' -- Δ'  = Δ₁'Δ₂'
           rho     = liftS (size delta2) rho3   -- Δ' ⊢ ρ : Δ₁(x:D)Δ₂
 
       -- debugTel "delta'" delta'
@@ -1100,9 +1108,13 @@ computeNeighbourhood delta1 n delta2 d pars ixs hix tel ps cps c = do
 
       -- Compute final context and substitution
       let rho3    = consS conp rho1            -- Δ₁' ⊢ ρ₃ : Δ₁(x:D)
-          delta2' = applySplitPSubst rho3 delta2  -- Δ₂' = Δ₂ρ₃
-          delta'  = delta1' `abstract` delta2' -- Δ'  = Δ₁'Δ₂'
           rho     = liftS (size delta2) rho3   -- Δ' ⊢ ρ : Δ₁(x:D)Δ₂
+
+      -- Δ₂' = Δ₂ρ₃
+      delta2' <- addContext delta1' $ liftTCM $
+        substTelRecheck (fromPatternSubstitution $ fromSplitPSubst rho3) delta2
+
+      let delta'  = delta1' `abstract` delta2' -- Δ'  = Δ₁'Δ₂'
 
       debugTel "delta'" delta'
       debugSubst "rho" rho
@@ -1288,9 +1300,16 @@ split' :: CheckEmpty
        -> BlockingVar
        -> TCM (Either SplitError (Either SplitClause Covering))
 split' checkEmpty ind allowPartialCover inserttrailing
-       sc@(SClause tel ps _ cps target) (BlockingVar x pcons' plits overlap lazy) =
- liftTCM $ runExceptT $ do
+       sc@(SClause tel ps _ cps target) (BlockingVar x pcons' plits overlap lazy) = liftTCM $ runExceptT $ do
   debugInit tel x ps cps
+
+  allow <- allowRewVarSplit x tel
+  let refr = case allow of
+        -- TODO: Can we ever hit this case?
+        -- (I believe splitting on variables in local rewrite rules should only
+        -- happen with '--smart-with' or '--local-rewrite-matches' enabled.)
+        VarSplitDisallowed -> __IMPOSSIBLE__
+        VarSplitAllowed refr -> refr
 
   -- Split the telescope at the variable
   -- t = type of the variable,  Δ₁ ⊢ t
@@ -1308,11 +1327,25 @@ split' checkEmpty ind allowPartialCover inserttrailing
         cons <- case checkEmpty of
           CheckEmpty   -> ifM (liftTCM $ inContextOfT $ isEmptyType $ unDom t) (pure []) (pure cons')
           NoCheckEmpty -> pure cons'
-        mns  <- forM cons $ \ con -> fmap (SplitCon con,) <$>
+
+        -- We kill the 'IInfo' field if the match invalidates local rewrite
+        -- rules to avoid failures with generating transport and hcomp
+        -- clauses later...
+        -- TODO: Should we throw a warning when doing this?
+        let modifyInfo si = if refreshRews refr then NoInfo else si
+
+        mns  <- forM cons $ \ con ->
+          fmap (\(sc, si) -> (SplitCon con, (sc, modifyInfo si))) <$>
           computeNeighbourhood delta1 n delta2 d pars ixs x tel ps cps con
-        hcompsc <- if isFib && (isHIT || not (null ixs)) && not (null mns) && inserttrailing == DoInsertTrailing
-                   then computeHCompSplit delta1 n delta2 d pars ixs x tel ps cps
-                   else return Nothing
+
+        -- TODO: is 'refreshRews $ refr' enough to always avoid impossibles
+        -- with '--smart-with'/ local rewrite rules and should we throw
+        -- a warning about the hcomp stuff not being generated?
+        hcompsc <-
+          if isFib && (isHIT || not (null ixs)) && not (null mns) &&
+             inserttrailing == DoInsertTrailing && not (refreshRews $ refr)
+          then computeHCompSplit delta1 n delta2 d pars ixs x tel ps cps
+          else return Nothing
         let ns = catMaybes mns
         return ( dr
                , s
@@ -1390,12 +1423,12 @@ split' checkEmpty ind allowPartialCover inserttrailing
           rho = liftS x $ consS absurdp $ raiseS 1
           ps' = applySubst rho ps
       return $ Left $ SClause
-               { scTel  = tel
-               , scPats = ps'
-               , scSubst              = __IMPOSSIBLE__ -- not used
-               , scCheckpoints        = __IMPOSSIBLE__ -- not used
-               , scTarget             = Nothing
-               }
+              { scTel  = tel
+              , scPats = ps'
+              , scSubst              = __IMPOSSIBLE__ -- not used
+              , scCheckpoints        = __IMPOSSIBLE__ -- not used
+              , scTarget             = Nothing
+              }
 
     -- Andreas, 2018-10-17: If more than one constructor matches, we cannot erase.
     n | n > 1 && not erased && not (usableQuantity t) ->
@@ -1436,8 +1469,10 @@ split' checkEmpty ind allowPartialCover inserttrailing
 
   where
     inContextOfT, inContextOfDelta2 :: (MonadAddContext tcm) => tcm a -> tcm a
-    inContextOfT      = addContext tel . escapeContext impossible (x + 1)
-    inContextOfDelta2 = addContext tel . escapeContext impossible x
+    inContextOfT      = addContext tel .
+      refreshLocalRewriteRules . escapeContext impossible (x + 1)
+    inContextOfDelta2 = addContext tel .
+      refreshLocalRewriteRules . escapeContext impossible x
 
     -- Debug printing
     debugInit tel x ps cps = liftTCM $ inTopContext $ do

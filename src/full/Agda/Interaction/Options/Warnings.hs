@@ -355,6 +355,7 @@ data WarningName
   | NoMain_
   | NotARewriteRule_
   | RewriteLHSNotDefinitionOrConstructor_
+  | RewriteLHSNotNeutral_
   | RewriteVariablesNotBoundByLHS_
   | RewriteVariablesBoundMoreThanOnce_
   | RewriteVariablesBoundInSingleton_
@@ -377,6 +378,8 @@ data WarningName
   | RewriteMissingRule_
   | DuplicateRewriteRule_
   | LocalRewriteOutsideTelescope_
+  | SmartWithOccursFail_
+  | RewriteRHSContainsClosures_
   | InferredLocalRewrite_
   | SafeFlagInjective_
   | SafeFlagNoCoverageCheck_
@@ -615,6 +618,8 @@ warningNameDescription = \case
   NoMain_                          -> "Compilation of modules that do not define `main'."
   NotARewriteRule_                 -> "`REWRITE pragmas referring to identifiers that are neither definitions nor constructors.'"
   RewriteLHSNotDefinitionOrConstructor_             -> "Rewrite rule head symbol is not a defined symbol or constructor."
+  RewriteLHSNotNeutral_                             -> "'--smart-with'-introduced rewrite rule LHS is not neutral."
+  RewriteRHSContainsClosures_                       -> "'--smart-with'-introduced rewrite rule RHS contains closures (e.g. lambdas or underapplied functions)."
   RewriteVariablesNotBoundByLHS_                    -> "Rewrite rule does not bind all of its variables."
   RewriteVariablesBoundMoreThanOnce_                -> "Constructor-headed rewrite rule has non-linear parameters."
   RewriteVariablesBoundInSingleton_                 -> "Rewrite rule binds some variables in possibly definitionally singular contexts."
@@ -637,6 +642,7 @@ warningNameDescription = \case
   RewriteMissingRule_              -> "Failed global confluence checks because of missing rule."
   DuplicateRewriteRule_            -> "Duplicate rewrite rules."
   LocalRewriteOutsideTelescope_    -> "'@rewrite' arguments are (currently) only allowed in module telescopes."
+  SmartWithOccursFail_             -> "Smart rewrite failed because LHS occurred in RHS or earlier smart-with rewrite!"
   InferredLocalRewrite_            -> "Tried to solve a meta with an '@rewrite' function."
   SafeFlagInjective_               -> "`INJECTIVE' pragmas with the safe flag."
   SafeFlagNoCoverageCheck_         -> "`NON_COVERING` pragmas with the safe flag."

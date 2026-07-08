@@ -255,15 +255,24 @@ instance EmbPrj Context where
     N2 0 a -> valuN Context a
     _      -> malformed
 
-instance EmbPrj RewriteSource where
+instance EmbPrj RewriteOrigin where
   icod_ = \case
-    LocalRewrite a b c -> icodeN 0 LocalRewrite a b c
-    GlobalRewrite a    -> icodeN 1 GlobalRewrite a
+    LocalRewrite  a -> icodeN 0 LocalRewrite a
+    GlobalRewrite a -> icodeN 1 GlobalRewrite a
 
   value = vcase $ \case
-    N4 0 a b c -> valuN LocalRewrite a b c
-    N2 1 a     -> valuN GlobalRewrite a
-    _          -> malformed
+    N2 0 a -> valuN LocalRewrite a
+    N2 1 a -> valuN GlobalRewrite a
+    _      -> malformed
+
+instance EmbPrj LocalRewriteInfo where
+  icod_ (LocalRewriteInfo a b c d) = icodeN 0 LocalRewriteInfo a b c d
+
+  value = vcase $ \case
+    N5 0 a b c d -> valuN LocalRewriteInfo a b c d
+    _            -> malformed
+
+instance EmbPrj RewriteLHSNotNeutralReason
 
 instance EmbPrj IllegalRewriteRuleReason where
   icod_ = \case
@@ -284,6 +293,9 @@ instance EmbPrj IllegalRewriteRuleReason where
     BeforeMutualFunctionDefinition a            -> icodeN 14 BeforeMutualFunctionDefinition a
     DuplicateRewriteRule                        -> icodeN 15 DuplicateRewriteRule
     LocalRewriteOutsideTelescope                -> icodeN 16 LocalRewriteOutsideTelescope
+    SmartWithOccursFail                         -> icodeN 17 SmartWithOccursFail
+    LHSNotNeutral a                             -> icodeN 18 LHSNotNeutral a
+    RHSContainsClosures                         -> icodeN 19 RHSContainsClosures
 
   value = vcase $ \case
     N1 0     -> valuN LHSNotDefinitionOrConstructor
@@ -303,6 +315,9 @@ instance EmbPrj IllegalRewriteRuleReason where
     N2 14 a  -> valuN BeforeMutualFunctionDefinition a
     N1 15    -> valuN DuplicateRewriteRule
     N1 16    -> valuN LocalRewriteOutsideTelescope
+    N1 17    -> valuN SmartWithOccursFail
+    N2 18 a  -> valuN LHSNotNeutral a
+    N1 19    -> valuN RHSContainsClosures
     _        -> malformed
 
 instance EmbPrj OptionWarning where
@@ -524,8 +539,8 @@ instance EmbPrj InfectiveCoinfective where
     valu _      = malformed
 
 instance EmbPrj PragmaOptions where
-  icod_    (PragmaOptions a b c d e f g h i j k l m n o p q r s t u v w x y z aa bb cc dd ee ff gg hh ii jj kk ll mm nn oo pp qq rr ss tt uu vv ww xx yy zz aaa bbb ccc ddd eee fff ggg hhh iii jjj kkk lll mmm nnn ooo ppp qqq rrr sss ttt uuu vvv www) =
-    icodeN' PragmaOptions a b c d e f g h i j k l m n o p q r s t u v w x y z aa bb cc dd ee ff gg hh ii jj kk ll mm nn oo pp qq rr ss tt uu vv ww xx yy zz aaa bbb ccc ddd eee fff ggg hhh iii jjj kkk lll mmm nnn ooo ppp qqq rrr sss ttt uuu vvv www
+  icod_    (PragmaOptions a b c d e f g h i j k l m n o p q r s t u v w x y z aa bb cc dd ee ff gg hh ii jj kk ll mm nn oo pp qq rr ss tt uu vv ww xx yy zz aaa bbb ccc ddd eee fff ggg hhh iii jjj kkk lll mmm nnn ooo ppp qqq rrr sss ttt uuu vvv www xxx yyy) =
+    icodeN' PragmaOptions a b c d e f g h i j k l m n o p q r s t u v w x y z aa bb cc dd ee ff gg hh ii jj kk ll mm nn oo pp qq rr ss tt uu vv ww xx yy zz aaa bbb ccc ddd eee fff ggg hhh iii jjj kkk lll mmm nnn ooo ppp qqq rrr sss ttt uuu vvv www xxx yyy
 
   value = valueN PragmaOptions
 

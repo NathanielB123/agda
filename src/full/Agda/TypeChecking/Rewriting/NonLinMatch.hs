@@ -61,6 +61,7 @@ import Agda.Utils.VarSet qualified as VarSet
 import Agda.Utils.StrictState
 
 import Agda.Utils.Impossible
+import Agda.Utils.CallStack (HasCallStack)
 
 
 -- | Monad for non-linear matching.
@@ -154,8 +155,10 @@ instance Match a b => Match (Arg a) (Arg b) where
 
 instance Match [Elim' NLPat] Elims where
   match r gamma k (t, hd) [] [] = return ()
+  -- I think this case is impossible coming from 'rewriteWith' but apparently
+  -- the confluence checker can still reach here
   match r gamma k (t, hd) [] _  = matchingBlocked $ NotBlocked ReallyNotBlocked ()
-  match r gamma k (t, hd) _  [] = matchingBlocked $ NotBlocked ReallyNotBlocked ()
+  match r gamma k (t, hd) _  [] = matchingBlocked $ NotBlocked Underapplied ()
   match r gamma k (t, hd) (p:ps) (v:vs) =
    traceSDoc "rewriting.match" 50 (sep
      [ "matching elimination " <+> addContext gamma (addContext k $ prettyTCM p)
@@ -472,7 +475,7 @@ getTypedHead x = do
 
 -- | Utility function for getting the type of a head term. Includes a case
 --   for variables (which are valid heads of local rewrite rules)
-getLocalHeadType :: PureTCM m => Term -> m (Maybe (Maybe QName, Type))
+getLocalHeadType :: (PureTCM m, HasCallStack) => Term -> m (Maybe (Maybe QName, Type))
 getLocalHeadType =  \case
   Def f []   -> Just . (Just f,) . defType <$> getConstInfo f
   Con (ConHead { conName = c }) _ [] -> do
