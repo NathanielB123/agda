@@ -5500,7 +5500,6 @@ illegalRewriteWarningName = \case
   LocalRewriteOutsideTelescope         -> LocalRewriteOutsideTelescope_
   SmartWithOccursFail{}                -> SmartWithOccursFail_
   RHSContainsClosures{}                -> RewriteRHSContainsClosures_
-  LHSSubterm{}                         -> RewriteLHSSubterm_
 
 -- | Should warnings of that type be serialized?
 --
@@ -6196,7 +6195,6 @@ data IllegalRewriteRuleReason
   | SmartWithOccursFail
   -- ^ TODO: Make this error message not awful
   | RHSContainsClosures
-  | LHSSubterm
     deriving (Show, Generic)
 
 -- | Boolean flag whether a name is ambiguous.
