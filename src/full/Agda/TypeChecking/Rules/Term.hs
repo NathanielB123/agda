@@ -59,9 +59,7 @@ import Agda.TypeChecking.Quote
 import Agda.TypeChecking.RecordPatterns
 import Agda.TypeChecking.Records
 import Agda.TypeChecking.Reduce
-import Agda.TypeChecking.Rewriting ( checkEquationValid
-                                   , checkLocalRewriteRule
-                                   , occursCheckSmartWithRewriteRule)
+import Agda.TypeChecking.Rewriting ( checkEquationValid, checkLocalRewriteRule )
 import Agda.TypeChecking.Rules.LHS
 import Agda.TypeChecking.SizedTypes
 import Agda.TypeChecking.SizedTypes.Solve
