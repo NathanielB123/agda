@@ -5587,6 +5587,7 @@ illegalRewriteWarningName = \case
   LocalRewriteOutsideTelescope         -> LocalRewriteOutsideTelescope_
   SmartWithOccursFail{}                -> SmartWithOccursFail_
   RHSContainsClosures{}                -> RewriteRHSContainsClosures_
+  LHSSubterm{}                         -> RewriteLHSSubterm_
 
 -- | Should warnings of that type be serialized?
 --
@@ -6272,11 +6273,8 @@ isLocalRewrite (LocalRewrite  _) = True
 isLocalRewrite (GlobalRewrite _) = False
 
 isSmartWithRewrite :: RewriteOrigin -> Bool
-isSmartWithRewrite (LocalRewrite i)  = case lrewInfoOrigin i of
-  LRewSmartWith   -> True
-  LRewUserWritten -> False
-isSmartWithRewrite (GlobalRewrite _) =
-  False
+isSmartWithRewrite (LocalRewrite i)  = lrewSmartWith $ lrewInfoOrigin i
+isSmartWithRewrite (GlobalRewrite _) = False
 
 data RewriteLHSNotNeutralReason
   = LHSConstructorHeaded
@@ -6309,6 +6307,7 @@ data IllegalRewriteRuleReason
   | SmartWithOccursFail
   -- ^ TODO: Make this error message not awful
   | RHSContainsClosures
+  | LHSSubterm
     deriving (Show, Generic)
 
 -- | Boolean flag whether a name is ambiguous.
