@@ -936,7 +936,9 @@ computeHCompSplit delta1 n delta2 d pars ixs hix tel ps cps = do
       -- Compute final context and substitution
       let rho3    = consS defp rho1            -- Δ₁' ⊢ ρ₃ : Δ₁(x:D)
 
-      let delta2' = applySubst (fromPatternSubstitution $ fromSplitPSubst rho3) delta2  -- Δ₂' = Δ₂ρ₃
+      -- Δ₂' = Δ₂ρ₃
+      delta2' <- addContext delta1' $ liftTCM $
+        substTelRecheck (fromPatternSubstitution $ fromSplitPSubst rho3) delta2
 
       let delta'  = delta1' `abstract` delta2' -- Δ'  = Δ₁'Δ₂'
           rho     = liftS (size delta2) rho3   -- Δ' ⊢ ρ : Δ₁(x:D)Δ₂
@@ -954,9 +956,10 @@ computeHCompSplit delta1 n delta2 d pars ixs hix tel ps cps = do
       return $ Just . (SplitCon hCompName,) $ SClause delta' ps' rho cps' Nothing -- target fixed later
 
 
--- | @computeNeighbourhood delta1 delta2 d pars ixs hix tel ps con@
+-- | @computeNeighbourhood refr delta1 delta2 d pars ixs hix tel ps con@
 --
 --   @
+--      refr     Does the split invalidate any local rewrite rules?
 --      delta1   Telescope before split point
 --      n        Name of pattern variable at split point
 --      delta2   Telescope after split point
@@ -971,7 +974,9 @@ computeHCompSplit delta1 n delta2 d pars ixs hix tel ps cps = do
 --   @
 --   @dtype == d pars ixs@
 computeNeighbourhood
-  :: Telescope                    -- ^ Telescope before split point.
+  :: RefreshRews                  -- ^ Does the split invalidate any local
+                                  --   rewrite rules?
+  -> Telescope                    -- ^ Telescope before split point.
   -> PatVarName                   -- ^ Name of pattern variable at split point.
   -> Telescope                    -- ^ Telescope after split point.
   -> QName                        -- ^ Name of datatype to split at.
@@ -983,7 +988,7 @@ computeNeighbourhood
   -> Map CheckpointId Substitution -- ^ Current checkpoints
   -> QName                        -- ^ Constructor to fit into hole.
   -> CoverM (Maybe (SplitClause, IInfo))   -- ^ New split clause if successful.
-computeNeighbourhood delta1 n delta2 d pars ixs hix tel ps cps c = do
+computeNeighbourhood refr delta1 n delta2 d pars ixs hix tel ps cps c = do
 
   -- Get the type of the datatype
   dtype <- liftTCM $ (`piApply` pars) . defType <$> getConstInfo d
@@ -1077,7 +1082,7 @@ computeNeighbourhood delta1 n delta2 d pars ixs hix tel ps cps c = do
                                           -- re #3733: update if we add transp for other sorts.
                     , not $ null $ conIxs -- no point propagating this info if trivial?
                     , Right (tau,leftInv) <- tauInv
-            = TheInfo $ UE delta1Gamma delta1' eqTel (map' unArg conIxs) (map' unArg givenIxs) rho0 tau leftInv
+            = TheInfo refr $ UE delta1Gamma delta1' eqTel (map' unArg conIxs) (map' unArg givenIxs) rho0 tau leftInv
                     | otherwise
             = NoInfo
 
@@ -1328,22 +1333,12 @@ split' checkEmpty ind allowPartialCover inserttrailing
           CheckEmpty   -> ifM (liftTCM $ inContextOfT $ isEmptyType $ unDom t) (pure []) (pure cons')
           NoCheckEmpty -> pure cons'
 
-        -- We kill the 'IInfo' field if the match invalidates local rewrite
-        -- rules to avoid failures with generating transport and hcomp
-        -- clauses later...
-        -- TODO: Should we throw a warning when doing this?
-        let modifyInfo si = if refreshRews refr then NoInfo else si
+        mns  <- forM cons $ \ con -> fmap (SplitCon con,) <$>
+          computeNeighbourhood refr delta1 n delta2 d pars ixs x tel ps cps con
 
-        mns  <- forM cons $ \ con ->
-          fmap (\(sc, si) -> (SplitCon con, (sc, modifyInfo si))) <$>
-          computeNeighbourhood delta1 n delta2 d pars ixs x tel ps cps con
-
-        -- TODO: is 'refreshRews $ refr' enough to always avoid impossibles
-        -- with '--smart-with'/ local rewrite rules and should we throw
-        -- a warning about the hcomp stuff not being generated?
         hcompsc <-
           if isFib && (isHIT || not (null ixs)) && not (null mns) &&
-             inserttrailing == DoInsertTrailing && not (refreshRews $ refr)
+             inserttrailing == DoInsertTrailing
           then computeHCompSplit delta1 n delta2 d pars ixs x tel ps cps
           else return Nothing
         let ns = catMaybes mns
