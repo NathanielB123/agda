@@ -5558,6 +5558,7 @@ illegalRewriteWarningName = \case
   LocalRewriteOutsideTelescope         -> LocalRewriteOutsideTelescope_
   SmartWithOccursFail{}                -> SmartWithOccursFail_
   RHSContainsClosures{}                -> RewriteRHSContainsClosures_
+  IntervalVariablesPresent{}           -> RewriteContainsIntervalVariables_
 
 -- | Should warnings of that type be serialized?
 --
@@ -6203,6 +6204,7 @@ data InductionAndEta = InductionAndEta
 -- | Should we refresh local rewrite rules (i.e. they might have been
 --   invalidated)
 data RefreshRews = RefreshRews | RetainRews
+  deriving Show
 
 instance Semigroup RefreshRews where
   RefreshRews <> _ = RefreshRews
@@ -6238,11 +6240,11 @@ data RewriteOrigin' a
 type RewriteOrigin = RewriteOrigin' Definition
 type SerialisableRewriteOrigin = RewriteOrigin' QName
 
-isLocalRewrite :: RewriteOrigin -> Bool
+isLocalRewrite :: RewriteOrigin' a -> Bool
 isLocalRewrite (LocalRewrite  _) = True
 isLocalRewrite (GlobalRewrite _) = False
 
-isSmartWithRewrite :: RewriteOrigin -> Bool
+isSmartWithRewrite :: RewriteOrigin' a -> Bool
 isSmartWithRewrite (LocalRewrite i)  = lrewSmartWith $ lrewInfoOrigin i
 isSmartWithRewrite (GlobalRewrite _) = False
 
@@ -6261,6 +6263,7 @@ data IllegalRewriteRuleReason
   | VariablesNotBoundByLHS VarSet
   | VariablesBoundMoreThanOnce VarSet
   | VariablesBoundInSingleton VarSet
+  | IntervalVariablesPresent VarSet
   | LHSReduces Term Term
   | HeadSymbolIsProjectionLikeFunction QName
   | HeadSymbolIsTypeConstructor QName
