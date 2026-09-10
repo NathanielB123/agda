@@ -82,6 +82,8 @@ module Agda.Interaction.Options.Base
     , lensOptEraseRecordParameters
     , lensOptRewriting
     , lensOptLocalRewriting
+    , lensOptLocalRewriteMatches
+    , lensOptSmartWith
     , lensOptCubical
     , lensOptGuarded
     , lensOptFirstOrder
@@ -149,6 +151,8 @@ module Agda.Interaction.Options.Base
     , optEraseRecordParameters
     , optRewriting
     , optLocalRewriting
+    , optLocalRewriteMatches
+    , optSmartWith
     , optGuarded
     , optFirstOrder
     , optRequireUniqueMetaSolutions
@@ -321,6 +325,8 @@ optErasedMatches             :: PragmaOptions -> Bool
 optEraseRecordParameters     :: PragmaOptions -> Bool
 optRewriting                 :: PragmaOptions -> Bool
 optLocalRewriting            :: PragmaOptions -> Bool
+optLocalRewriteMatches       :: PragmaOptions -> Bool
+optSmartWith                 :: PragmaOptions -> Bool
 optGuarded                   :: PragmaOptions -> Bool
 optFirstOrder                :: PragmaOptions -> Bool
 optRequireUniqueMetaSolutions :: PragmaOptions -> Bool
@@ -387,6 +393,8 @@ optErasedMatches             = collapseDefault . _optErasedMatches && optErasure
 optEraseRecordParameters     = collapseDefault . _optEraseRecordParameters
 optRewriting                 = collapseDefault . _optRewriting
 optLocalRewriting            = collapseDefault . _optLocalRewriting
+optLocalRewriteMatches       = collapseDefault . _optLocalRewriteMatches
+optSmartWith                 = collapseDefault . _optSmartWith
 optGuarded                   = collapseDefault . _optGuarded
 optFirstOrder                = collapseDefault . _optFirstOrder
 optRequireUniqueMetaSolutions = collapseDefault . _optRequireUniqueMetaSolutions && not . optFirstOrder
@@ -565,6 +573,12 @@ lensOptRewriting f o = f (_optRewriting o) <&> \ i -> o{ _optRewriting = i }
 lensOptLocalRewriting :: Lens' PragmaOptions _
 lensOptLocalRewriting f o = f (_optLocalRewriting o) <&> \ i -> o{ _optLocalRewriting = i }
 
+lensOptLocalRewriteMatches :: Lens' PragmaOptions _
+lensOptLocalRewriteMatches f o = f (_optLocalRewriteMatches o) <&> \ i -> o{ _optLocalRewriteMatches = i }
+
+lensOptSmartWith :: Lens' PragmaOptions _
+lensOptSmartWith f o = f (_optSmartWith o) <&> \ i -> o { _optSmartWith = i }
+
 lensOptCubical :: Lens' PragmaOptions _
 lensOptCubical f o = f (_optCubical o) <&> \ i -> o{ _optCubical = i }
 
@@ -711,6 +725,8 @@ data OptionWarning
       -- ^ A problem with setting or unsetting a warning.
   | LocalRewritingConfluenceCheck
       -- ^ Confluence checking for local rewrite rules is unimplemented.
+  | SmartWithCubical
+      -- ^ '--smart-with' plus '--cubical' is unsupported
   deriving (Show, Generic)
 
 instance NFData OptionWarning
@@ -721,14 +737,16 @@ instance Pretty OptionWarning where
       [ "Option", option old, "is deprecated, please use", option new, "instead" ]
     WarningProblem err -> pretty (prettyWarningModeError err) <+> "See --help=warning."
     LocalRewritingConfluenceCheck -> fsep $ pwords "Confluence checking (--confluence-check or --local-confluence-check) is not yet implemented for local rewrite rules (--local-rewriting)"
+    SmartWithCubical -> fsep $ pwords "Smart with (--smart-with) is not yet supported for Cubical Agda (--cubical or --cubical-compatible). Matching on indexed datatypes will probably hit errors."
     where
     option = text . ("--" ++)
 
 optionWarningName :: OptionWarning -> WarningName
 optionWarningName = \case
-  OptionRenamed{} -> OptionRenamed_
-  WarningProblem{} -> WarningProblem_
-  LocalRewritingConfluenceCheck -> LocalRewritingConfluenceCheck_
+  OptionRenamed{}                 -> OptionRenamed_
+  WarningProblem{}                -> WarningProblem_
+  LocalRewritingConfluenceCheck{} -> LocalRewritingConfluenceCheck_
+  SmartWithCubical{}              -> SmartWithCubical_
 
 -- | Checks that the given options are consistent.
 --   Also makes adjustments (e.g. when one option implies another).
@@ -767,6 +785,9 @@ checkPragmaOptions opts = do
 
   when (isJust (optConfluenceCheck opts) && optLocalRewriting opts) $
     tell1 LocalRewritingConfluenceCheck
+
+  when (optSmartWith opts && optCubicalCompatible opts) $
+    tell1 SmartWithCubical
 
 #ifndef COUNT_CLUSTERS
   when (optCountClusters opts) $
@@ -830,8 +851,9 @@ unsafePragmaOptions opts =
   [ "--irrelevant-projections"          | optIrrelevantProjections opts                     ] ++
   [ "--experimental-irrelevance"        | optExperimentalIrrelevance opts                   ] ++
   [ "--rewriting"                       | optRewriting opts                                 ] ++
-  [ "--local-rewriting"                 | optLocalRewriting opts                            ]
-  ++
+  [ "--local-rewriting"                 | optLocalRewriting opts                            ] ++
+  [ "--local-rewrite-matches"           | optLocalRewriteMatches opts                       ] ++
+  [ "--smart-with"                      | optSmartWith opts                                 ] ++
   [ "--cubical=compatible and --with-K" | optCubicalCompatible opts, not (optWithoutK opts) ] ++
   [ "--without-K and --flat-split"      | optWithoutK opts, optFlatSplit opts               ] ++
   [ "--cumulativity"                    | optCumulativity opts                              ] ++
@@ -954,6 +976,8 @@ infectiveCoinfectiveOptions =
   , infectiveOption optTwoLevel               "--two-level"
   , infectiveOption optRewriting              "--rewriting"
   , infectiveOption optLocalRewriting         "--local-rewriting"
+  , infectiveOption optLocalRewriteMatches   "--local-rewrite-matches"
+
   , infectiveOption optSizedTypes             "--sized-types"
   , infectiveOption optGuardedness            "--guardedness"
   , infectiveOption optFlatSplit              "--flat-split"
@@ -1273,6 +1297,9 @@ confluenceCheckFlag f o = return $ o { _optConfluenceCheck = Just f }
 
 noConfluenceCheckFlag :: Flag PragmaOptions
 noConfluenceCheckFlag o = return $ o { _optConfluenceCheck = Nothing }
+
+localRewriteMatchesFlag :: Bool -> Flag PragmaOptions
+localRewriteMatchesFlag b o = return $ o { _optLocalRewriteMatches = Value b }
 
 exactSplitFlag :: Bool -> Flag PragmaOptions
 exactSplitFlag b o = do
@@ -1662,6 +1689,14 @@ rewritingPragmaOptions = ("Rewriting and confluence",) $ concat
   , pragmaFlag      "local-rewriting" lensOptLocalRewriting
                     "enable declaring local rewrite rules with the @rewrite annotation" ""
                     $ Just "disable local rewrite rules"
+  , [ Option []     ["local-rewrite-matches"] (NoArg $ localRewriteMatchesFlag True)
+                    "allow pattern-matching on variables which occur in local rewrite rules"
+    , Option []     ["no-local-rewrite-matches"] (NoArg $ localRewriteMatchesFlag False)
+                    "disallow pattern-matching on variables which occur in local rewrite rules (default)"
+    ]
+  , pragmaFlag      "smart-with" lensOptSmartWith
+                    "elaborate with-abstractions using local rewrite rules" ""
+                    $ Just "elaborate with-abstractions using generalisation"
   ]
 
 equalityCheckingPragmaOptions :: (String, [OptDescr (Flag PragmaOptions)])

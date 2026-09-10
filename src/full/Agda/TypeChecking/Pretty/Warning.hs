@@ -405,7 +405,10 @@ prettyWarning = \case
         ]
 
     IllegalRewriteRule q reason -> do
-      let illegalSince q = [ prettyTCM q, "" ] ++ pwords "is not a legal rewrite rule, since"
+      let illegalSince q = [ prettyTCM q, "" ] ++
+            pwords "is not a legal" ++
+            (if isSmartWithRewrite q then pwords "(--smart-with)" else []) ++
+            pwords "rewrite rule, since"
       case reason of
 
         LHSNotDefinitionOrConstructor -> do
@@ -413,6 +416,30 @@ prettyWarning = \case
             [ illegalSince q
             , pwords "the left-hand side is neither a defined symbol nor a constructor"
             ]
+
+        LHSNotNeutral r -> do
+          (fsep . concat)
+            [ illegalSince q
+            , pwords "the left-hand side is"
+            , case r of
+                LHSConstructorHeaded -> pwords
+                  "headed by a constructor"
+                LHSUnderapplied      -> pwords
+                  "underapplied"]
+
+        RHSContainsClosures -> do
+          (fsep . concat)
+            [ illegalSince q
+            , pwords "the right-hand side contains closures (e.g. lambdas or underapplied functions) which can cause non-termination"]
+
+        IntervalVariablesPresent xs -> do
+          (fsep . concat)
+            [ illegalSince q
+            , pwords "the following interval"
+            , pwords $ singPlural ys "variable is" "variables are"
+            , pwords "present:" ]
+            <?> fsep (map (prettyTCM . var) ys)
+          where ys = VarSet.toAscList xs
 
         VariablesNotBoundByLHS xs -> do
           (fsep . concat)
@@ -543,6 +570,11 @@ prettyWarning = \case
         LocalRewriteOutsideTelescope -> (fsep . concat)
           [ illegalSince q
           , pwords "local rewrite rules are (currently) only allowed in module telescopes. Consider creating an anonymous module"
+          ]
+
+        SmartWithOccursFail -> (fsep . concat)
+          [ illegalSince q
+          , pwords "the LHS occurs in the RHS or an earlier '--smart-with' rewrite rule"
           ]
 
     ConfluenceCheckingIncompleteBecauseOfMeta f -> (fsep . concat)
@@ -818,12 +850,12 @@ instance PrettyTCM DataOrRecord_ where
     IsData{}   -> "data"
     IsRecord{} -> "record"
 
-instance PrettyTCM RewriteSource where
+instance PrettyTCM RewriteOrigin where
   prettyTCM s = prettyTCM (defName <$> s)
 
-instance PrettyTCM SerialisableRewriteSource where
+instance PrettyTCM SerialisableRewriteOrigin where
   prettyTCM = \case
-    LocalRewrite g n t ->
+    LocalRewrite (LocalRewriteInfo o g n t) ->
       maybe "_" prettyTCM n <+> ":" <+> addContext g (prettyTCM t)
     GlobalRewrite q    -> prettyTCM q
 

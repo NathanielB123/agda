@@ -28,6 +28,7 @@ import Agda.TypeChecking.Names
 import Agda.TypeChecking.Pretty
 import Agda.TypeChecking.Primitive hiding (Nat)
 import Agda.TypeChecking.Reduce
+import Agda.TypeChecking.Rules.LHS.Unify (recheckLocalRewrites)
 import Agda.TypeChecking.Substitute
 import Agda.TypeChecking.Telescope
 import Agda.TypeChecking.Telescope.Path
@@ -56,7 +57,11 @@ createMissingIndexedClauses ::
   -> [Clause]
   -> TCM ([(SplitTag,CoverResult)],[Clause])
 createMissingIndexedClauses f n x old_sc scs cs = do
-  let infos = [(c,i) | (SplitCon c, (_,TheInfo i)) <- scs ]
+  -- For now, we only handle infos where the unifier did not invalidate any
+  -- local rewrite rules...
+  -- TODO: Is it safe to just skip creating these missing
+  -- 'TrXCon' clauses? Should we throw a warning or error?
+  let infos = [(c,i) | (SplitCon c, (_,TheInfo RetainRews i)) <- scs ]
   case scs of
     xs | info:_ <- infos -> do
          reportSDoc "tc.cover.indexed" 20 $ text "size (xs,infos):" <+> pretty (size xs,size infos)
@@ -236,6 +241,9 @@ createMissingTrXTrXClause q_trX f n x old_sc = do
     abstractT "x0" (pure dT `applyN` g1 `applyN` for q (\ f -> f <@> pure iz)) $ \ x0 -> do
     deltaPat g1 phi p psi q x0
 
+  -- Need to recheck local rewrite rules after substitution
+  -- cTel <- recheckLocalRewrites cTel
+
   ps_ty_rhs <- runNamesT [] $ do
     bindN (map unArg gamma1ArgNames) $ \ g1 -> do
     bind "φ" $ \ phi -> do
@@ -344,6 +352,7 @@ createMissingTrXTrXClause q_trX f n x old_sc = do
     let rhs = hcomp (unDom <$> rhsTy) sys w0
     (,,) <$> ps <*> rhsTy <*> rhs
   let (ps,ty,rhs) = unAbsN $ unAbs $ unAbsN $ unAbs $ unAbsN $ unAbs $ unAbsN $ ps_ty_rhs
+  reportSDoc "rewriting" 30 $ "trX-trX 1:"
   reportSDoc "tc.cover.trx.trx" 20 $ "trX-trX clause for" <+> prettyTCM f
   let c = Clause { clauseLHSRange  = noRange
                  , clauseFullRange = noRange
@@ -411,6 +420,7 @@ createMissingTrXHCompClause q_trX f n x old_sc = do
    old_ps = fromSplitPatterns $ scPats old_sc
    old_t = fromMaybe __IMPOSSIBLE__ $ scTarget old_sc
 
+  reportSDoc "rewriting" 30 $ "trX-trX 2:"
   reportSDoc "tc.cover.trx.trx" 20 $ "trX-trX clause for" <+> prettyTCM f
   reportSDoc "tc.cover.trx.trx" 20 $ nest 2 $ vcat $
     [ "old_tel:" <+> prettyTCM old_tel
@@ -539,6 +549,9 @@ createMissingTrXHCompClause q_trX f n x old_sc = do
     abstractT "u0" ty $ \ u0 -> do
     deltaPat g1 phi p [psi,u,u0]
 
+  -- Need to recheck local rewrite rules after substitution
+  -- cTel <- recheckLocalRewrites cTel
+
   ps_ty_rhs <- runNamesT [] $ do
     bindN (map unArg gamma1ArgNames) $ \ g1 -> do
     bind "φ" $ \ phi -> do
@@ -613,6 +626,7 @@ createMissingTrXHCompClause q_trX f n x old_sc = do
       transpSys ty ((phi,sysphi):(psi,syspsi):sys) face base
     (,,) <$> ps <*> rhsTy <*> pure rhs
   let (ps,ty,rhs) = unAbsN $ unAbs $ unAbs $ unAbs $ unAbsN $ unAbs $ unAbsN $ ps_ty_rhs
+  reportSDoc "rewriting" 30 $ "cTel:" <+> prettyTCM cTel
   reportSDoc "tc.cover.trx.hcomp" 20 $ "trX-hcomp clause for" <+> prettyTCM f
   let c = Clause { clauseLHSRange  = noRange
                  , clauseFullRange = noRange
@@ -772,6 +786,8 @@ createMissingTrXConClause q_trX f n x old_sc c (UE gamma gamma' xTel u v rho tau
     abstractT "φ" (pure interval) $ \ phi -> do
     abstractN (xTelI `applyN` g1_args) $ \ p -> do
     deltaPat g1_args phi p
+  -- Need to recheck local rewrite rules after substitution
+  -- cTel <- recheckLocalRewrites cTel
   ps_ty_rhs <- runNamesT [] $ do
     bindN (map unArg gammaArgNames) $ \ g1_args -> do
     bind "phi" $ \ phi -> do

@@ -61,6 +61,7 @@ import Agda.Utils.VarSet qualified as VarSet
 import Agda.Utils.StrictState
 
 import Agda.Utils.Impossible
+import Agda.Utils.CallStack (HasCallStack)
 
 
 -- | Monad for non-linear matching.
@@ -152,10 +153,22 @@ instance Match a b => Match (Arg a) (Arg b) where
   match r gamma k t p v = let r' = r `composeRelevance` getRelevance p
                           in  match r' gamma k (unDom t) (unArg p) (unArg v)
 
+-- | When matching elims, 'Underapplied' should not be propagated
+--
+--   Note that most other matching code currently returns 'ReallyNotBlocked'
+--   when it could be more precise and return 'StuckOn e'. I don't think it
+--   matters much either way.
+stuckOnM :: Elim' Term -> NLM a -> NLM a
+stuckOnM e c = catchError c $ \case
+  b@Blocked{}    -> throwError b
+  NotBlocked r t -> throwError $ NotBlocked (stuckOn e r) t
+
 instance Match [Elim' NLPat] Elims where
   match r gamma k (t, hd) [] [] = return ()
+  -- I think this case is impossible coming from 'rewriteWith' but apparently
+  -- the confluence checker can still reach here
   match r gamma k (t, hd) [] _  = matchingBlocked $ NotBlocked ReallyNotBlocked ()
-  match r gamma k (t, hd) _  [] = matchingBlocked $ NotBlocked ReallyNotBlocked ()
+  match r gamma k (t, hd) _  [] = matchingBlocked $ NotBlocked Underapplied ()
   match r gamma k (t, hd) (p:ps) (v:vs) =
    traceSDoc "rewriting.match" 50 (sep
      [ "matching elimination " <+> addContext gamma (addContext k $ prettyTCM p)
@@ -166,7 +179,7 @@ instance Match [Elim' NLPat] Elims where
    case (p,v) of
     (Apply p, Apply v) -> addContext k (unEl <$> reduce t) >>= \case
       Pi a b -> do
-        match r gamma k a p v
+        stuckOnM (Apply v) $ match r gamma k a p v
         let t'  = absApp b (unArg v)
             hd' = hd . (Apply v:)
         match r gamma k (t',hd') ps vs
@@ -176,7 +189,7 @@ instance Match [Elim' NLPat] Elims where
     (IApply x y p , IApply u v i) -> addContext k (pathView =<< reduce t) >>= \case
       PathType s q l b _u _v -> do
         interval <- fromRight __IMPOSSIBLE__ <$> runExceptT primIntervalType
-        match r gamma k interval p i
+        stuckOnM (IApply u v i) $ match r gamma k interval p i
         let t' = El s $ unArg b `apply` [ defaultArg i ]
         let hd' = hd . (IApply u v i:)
         match r gamma k (t',hd') ps vs
@@ -432,7 +445,7 @@ checkPostponedEquations sub eqs = forM' eqs $
 nonLinMatch :: (PureTCM m, Match a b)
             => Telescope -> TypeOf b -> a -> b -> m (Either Blocked_ Substitution)
 nonLinMatch gamma t p v = do
-  let no msg b = traceSDoc "rewriting.match" 10 (sep
+  let no msg b = traceSDoc "rewriting.match" 20 (sep
                    [ "matching failed during" <+> text msg
                    , "blocking: " <+> text (show b) ]) $ return (Left b)
   caseEitherM (runNLM $ match relevant gamma empty t p v) (no "matching") $ \ s -> do
@@ -472,7 +485,7 @@ getTypedHead x = do
 
 -- | Utility function for getting the type of a head term. Includes a case
 --   for variables (which are valid heads of local rewrite rules)
-getLocalHeadType :: PureTCM m => Term -> m (Maybe (Maybe QName, Type))
+getLocalHeadType :: (PureTCM m, HasCallStack) => Term -> m (Maybe (Maybe QName, Type))
 getLocalHeadType =  \case
   Def f []   -> Just . (Just f,) . defType <$> getConstInfo f
   Con (ConHead { conName = c }) _ [] -> do

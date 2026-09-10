@@ -250,6 +250,7 @@ data WarningName
   | WarningProblem_
       -- ^ Some warning could not be set or unset.
   | LocalRewritingConfluenceCheck_
+  | SmartWithCubical_
   -- Parser Warnings
   | OverlappingTokensWarning_
   | MisplacedAttributes_
@@ -356,6 +357,7 @@ data WarningName
   | NoMain_
   | NotARewriteRule_
   | RewriteLHSNotDefinitionOrConstructor_
+  | RewriteLHSNotNeutral_
   | RewriteVariablesNotBoundByLHS_
   | RewriteVariablesBoundMoreThanOnce_
   | RewriteVariablesBoundInSingleton_
@@ -378,6 +380,9 @@ data WarningName
   | RewriteMissingRule_
   | DuplicateRewriteRule_
   | LocalRewriteOutsideTelescope_
+  | SmartWithOccursFail_
+  | RewriteRHSContainsClosures_
+  | RewriteContainsIntervalVariables_
   | InferredLocalRewrite_
   | SafeFlagInjective_
   | SafeFlagNoCoverageCheck_
@@ -508,6 +513,7 @@ warningNameDescription = \case
   OptionRenamed_                   -> "Renamed options."
   WarningProblem_                  -> "Problems with switching warnings."
   LocalRewritingConfluenceCheck_   -> "Confluence checking local rewrite rules in not yet implemented."
+  SmartWithCubical_                -> "The combination of '--smart-with' and '--cubical' is not yet fully implemented."
   -- Parser Warnings
   OverlappingTokensWarning_        -> "Multi-line comments spanning one or more literate text blocks."
   MisplacedAttributes_             -> "Attributes where they are not supported."
@@ -616,6 +622,9 @@ warningNameDescription = \case
   NoMain_                          -> "Compilation of modules that do not define `main'."
   NotARewriteRule_                 -> "`REWRITE pragmas referring to identifiers that are neither definitions nor constructors.'"
   RewriteLHSNotDefinitionOrConstructor_             -> "Rewrite rule head symbol is not a defined symbol or constructor."
+  RewriteLHSNotNeutral_                             -> "'--smart-with'-introduced rewrite rule LHS is not neutral."
+  RewriteRHSContainsClosures_                       -> "'--smart-with'-introduced rewrite rule RHS contains closures (e.g. lambdas or underapplied functions)."
+  RewriteContainsIntervalVariables_                 -> "Local rewrite rules containing interval variables are unsupported."
   RewriteVariablesNotBoundByLHS_                    -> "Rewrite rule does not bind all of its variables."
   RewriteVariablesBoundMoreThanOnce_                -> "Constructor-headed rewrite rule has non-linear parameters."
   RewriteVariablesBoundInSingleton_                 -> "Rewrite rule binds some variables in possibly definitionally singular contexts."
@@ -638,6 +647,7 @@ warningNameDescription = \case
   RewriteMissingRule_              -> "Failed global confluence checks because of missing rule."
   DuplicateRewriteRule_            -> "Duplicate rewrite rules."
   LocalRewriteOutsideTelescope_    -> "'@rewrite' arguments are (currently) only allowed in module telescopes."
+  SmartWithOccursFail_             -> "Smart with/rewrite failed because LHS occurred in RHS or earlier rewrite!"
   InferredLocalRewrite_            -> "Tried to solve a meta with an '@rewrite' function."
   SafeFlagInjective_               -> "`INJECTIVE' pragmas with the safe flag."
   SafeFlagNoCoverageCheck_         -> "`NON_COVERING` pragmas with the safe flag."
