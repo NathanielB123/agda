@@ -1158,10 +1158,28 @@ isSort = \case
 
 -- | Get the flavor of the universe. 'Nothing' could also mean "don't know".
 sortUniv :: Sort' t -> Maybe Univ
-sortUniv = \case
-  Univ u _ -> Just u
-  Inf  u _ -> Just u
-  _        -> Nothing
+sortUniv s = case sortFlavour s of
+  UnivFlavour u -> Just u
+  _             -> Nothing
+
+data SortFlavour = BlockedSort Blocker | UnivFlavour Univ | OtherFlavour
+
+-- | Extract universe from dependent sort
+--  Pre-condition: Sort is actually (non-flexibly) dependent
+sortFlavour :: Sort' t -> SortFlavour
+sortFlavour = \case
+  Univ u _       -> UnivFlavour u
+  SizeUniv       -> OtherFlavour
+  LockUniv       -> OtherFlavour
+  LevelUniv      -> OtherFlavour
+  IntervalUniv   -> OtherFlavour
+  Inf u n        -> UnivFlavour u
+  MetaS m _      -> BlockedSort $! UnblockOnMeta m
+  FunSort s1 s2  -> sortFlavour s2
+  PiSort a s1 s2 -> sortFlavour $ unAbs s2
+  UnivSort s     -> sortFlavour s
+  DefS{}         -> BlockedSort $ neverUnblock
+  DummyS{}       -> OtherFlavour
 
 -- | Is this a Prop universe?  Answers are yes ('True') or maybe ('False').
 isProp :: Sort' t -> Bool

@@ -1823,6 +1823,15 @@ sizeOfSort = \case
   DefS{}       -> Left neverUnblock
   DummyS{}     -> Left neverUnblock
 
+-- | Make a dependent sort non-dependent by turning it into the smallest large
+--   sort above it
+--   Pre-condition: Sort is actually (non-flexibly) dependent
+makeLarge :: Sort -> Either Blocker Sort
+makeLarge s = case sortFlavour s of
+  BlockedSort b -> Left b
+  UnivFlavour u -> Right $! Inf u 0
+  OtherFlavour  -> __IMPOSSIBLE__
+
 isSmallSort :: Sort -> Bool
 isSmallSort s = case sizeOfSort s of
   Right SmallSort{} -> True
@@ -1895,54 +1904,32 @@ funSortM a b = do
   hasLevelUniv <- isLevelUniverseEnabled
   return $ funSort hasLevelUniv a b
 
--- | Compute the sort of a pi type from three inputs:
---   1. The "raw" domain of the pi type (without the sort)
---   2. The sort of the domain
---   3. The sort of the codomain (which lives in an extended context)
+-- | Try to unwrap an 'Abs' by doing a free variable check
+noabsAppTry :: (Free t, Subst t) => Abs t -> Either Blocker (Maybe t)
+noabsAppTry (NoAbs _ s2) = pure (Just s2)
+noabsAppTry (Abs   _ s2) = case varOccurrenceIn 0 s2 of
+  Nothing -> pure $! Just $! strengthen __IMPOSSIBLE__ s2
+  Just o  -> case varFlexRig o of
+    StronglyRigid -> pure Nothing
+    Unguarded     -> pure Nothing
+    -- TODO: #8393 requires reducing the sort to remove weakly rigid
+    -- occurrences
+    WeaklyRigid -> pure Nothing
+    Flexible ms -> Left $ metaSetToBlocker ms
+
+-- | Compute the sort of a pi type from two inputs:
+--   1. The sort of the domain
+--   2. The sort of the codomain (which lives in an extended context)
 --
 -- Note that unlike funSort', we don't care whether --level-universe is
 -- enabled here. Instead, we just return a FunSort constructor and
 -- assume it will be simplified in the next step. See also:
 -- * `instance Reduce Sort` in Agda.TypeChecking.Substitute (this file)
 -- * `inferPiSort` in Agda.TypeChecking.Sort
-piSort' :: Dom Term -> Sort -> Abs Sort -> Either Blocker Sort
-piSort' a s1       (NoAbs _ s2) = Right $ FunSort s1 s2
-piSort' a s1 s2Abs@(Abs   _ s2) = case varOccurrenceIn 0 s2 of
-  Nothing -> Right $ FunSort s1 $ noabsApp __IMPOSSIBLE__ s2Abs
-  Just o  -> piSortAbs a s1 s2Abs (varFlexRig o) CodomainNotNormalised
-
-data IsCodomainNormalised = CodomainNormalised | CodomainNotNormalised
-
--- | Compute the sort of a pi type where the codomain sort is a proper Abs.
---   Compared to piSort' we take two additional arguments:
---   4. The occurrence of the variable in the codomain.
---   5. Whether we have already tried to remove the dependency by
---      normalising the codomain sort (e.g. with forceNoAbs)
-piSortAbs
-  :: Dom Term
-  -> Sort
-  -> Abs Sort
-  -> FlexRig
-  -> IsCodomainNormalised
-  -> Either Blocker Sort
-piSortAbs a s1 NoAbs{} _ _ = __IMPOSSIBLE__
-piSortAbs a s1 (Abs x s2) occ norm = case (sizeOfSort s1 , sizeOfSort s2) of
-  (Right (SmallSort u1) , Right (SmallSort u2)) -> case occ of
-    StronglyRigid -> let !u = funUniv u1 u2 in Right (Inf u 0)
-    Unguarded     -> let !u = funUniv u1 u2 in Right (Inf u 0)
-    -- Jesper, 2026-02-17: A weakly rigid occurrence might disappear after
-    -- normalisation (see #8393) so we refrain from making a final verdict here.
-    -- unless we are sure further normalisation will not remove the dependency
-    WeaklyRigid -> case norm of
-      CodomainNormalised -> let !u = funUniv u1 u2 in Right (Inf u 0)
-      CodomainNotNormalised -> Left alwaysUnblock
-    Flexible ms -> Left $! metaSetToBlocker ms
-  (Right (LargeSort u1 n) , Right (SmallSort u2)) -> let !u = funUniv u1 u2 in Right (Inf u n)
-  -- large sorts cannot depend on variables
-  (_             , Right LargeSort{}) -> __IMPOSSIBLE__
-  (Left blocker  , Right _          ) -> Left blocker
-  (Right _       , Left blocker     ) -> Left blocker
-  (Left blocker1 , Left blocker2    ) -> Left $! unblockOnBoth blocker1 blocker2
+piSort' :: Sort -> Abs Sort -> Either Blocker Sort
+piSort' s1 s2Abs = noabsAppTry s2Abs >>= \case
+  Nothing -> FunSort s1 <$> makeLarge (unAbs s2Abs)
+  Just s2 -> pure $! FunSort s1 s2
 
 -- Andreas, 2019-06-20
 -- KEEP the following commented out code for the sake of the discussion on irrelevance.
@@ -1974,11 +1961,11 @@ piSortAbs a s1 (Abs x s2) occ norm = case (sizeOfSort s1 , sizeOfSort s2) of
 --     Flexible _    -> Nothing
 
 piSort :: Dom Term -> Sort -> Abs Sort -> Sort
-piSort a s1 s2 = fromRight (const $ PiSort a s1 s2) $ piSort' a s1 s2
+piSort a s1 s2 = fromRight (const $ PiSort a s1 s2) $ piSort' s1 s2
 
 {-# SPECIALISE piSortM :: Dom Term -> Sort -> Abs Sort -> TCM Sort #-}
 piSortM :: HasOptions m => Dom Term -> Sort -> Abs Sort -> m Sort
-piSortM va s1 s2 = case piSort' va s1 s2 of
+piSortM va s1 s2 = case piSort' s1 s2 of
   Left _ -> return $ PiSort va s1 s2
   -- Jesper, 2025-09-15: if a PiSort reduces to a FunSort, piSort'
   -- just returns the FunSort without trying to simplify it further.
