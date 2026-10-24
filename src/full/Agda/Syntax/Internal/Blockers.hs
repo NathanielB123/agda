@@ -46,10 +46,14 @@ data NotBlocked' t
 --   @'StuckOn'{}@ should be propagated, if tied, we take the left.
 instance Semigroup (NotBlocked' t) where
   ReallyNotBlocked <> b = b
+  b <> ReallyNotBlocked = b
   -- MissingClauses is dominant (absorptive)
   b@MissingClauses{} <> _ = b
   _ <> b@MissingClauses{} = b
-  -- StuckOn is second strongest
+  -- Underapplied is second strongest
+  Underapplied <> _ = Underapplied
+  _ <> Underapplied = Underapplied
+  -- StuckOn is third strongest
   b@StuckOn{}      <> _ = b
   _ <> b@StuckOn{}      = b
   b <> _                = b
