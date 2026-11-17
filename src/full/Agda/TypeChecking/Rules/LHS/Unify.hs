@@ -252,7 +252,6 @@ unifyIndices'
 unifyIndices' linv tel flex a us vs = do
   u <- unifyIndices'' linv tel flex a us vs
   forA u \(a,b,c,d,e) -> do
-    reportSDoc "rewriting" 30 $ "TEST 1"
     a' <- if refreshRews b
       then do
         reportSDoc "rewriting" 30 $ "Refreshing local rewrite rules..."
@@ -336,17 +335,25 @@ recheckLocalRewrites (ExtendTel x xs) = do
     go d = do
       rd' <- forA (rewDom d) \rd -> do
         cxt <- getContext
-        -- TODO: Names/sane error messages
+        -- TODO: Names for error messages
         let i = LocalRewriteInfo (rewDomOrigin rd) cxt Nothing (unDom d)
         let eq = rewDomEq rd
 
-        -- It might be that the rewrite is now reflexive and we can discard it
-        -- TODO: Is this safe '--without-K'? (I assume not, but am not certain)
-        withK <- not <$> withoutKOption
-        skipRew <- if withK then
-          tryConversion $ dontAssignMetas $
+        -- It might be that the rewrite is now reflexive and can be discarded.
+        -- I *think* this should be safe even '--without-K', but this is
+        -- subtle. Note we only discard later rewrites which are implied
+        -- by earlier ones, so intuitively we could imagine just simply not
+        -- reflecting the later rewrites insted (e.g. we could imagine an
+        -- alternative reflection primitive which *only* reflects the 'LHS =
+        -- RHS' equation, without the 'eq = refl' one).
+        skipRew <- if lrewSmartWith $! rewDomOrigin rd
+          -- We only consider skipping '--smart-with' rewrite rules.
+          -- Perhaps we could extend skipping to other local rewrite rules, but
+          -- I am not convinced it is useful (we have to remember to go under
+          -- 'lEqContext' if so)
+          then tryConversion $ dontAssignMetas $
             equalTerm (lEqType eq) (lEqLHS eq) (lEqRHS eq)
-        else pure False
+          else pure False
 
         if skipRew then pure Nothing else Just <$> recheckRewDom i rd
       pure $ dRew .~ join rd' $ d

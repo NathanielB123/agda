@@ -20,9 +20,6 @@ hide ⟨⟩ x = x
 unitp : (u : Unit) → u ≡ ⟨⟩
 unitp ⟨⟩ = refl
 
-unitElim : (P : Unit → Set) → P ⟨⟩ → (u : Unit) → P u
-unitElim P d ⟨⟩ = d
-
 local-reflect : (u : Unit) (eq : hide u x ≡ x)
               → PathOver (λ v → hide v x ≡ x) (unitp u) eq refl
 local-reflect {x = x} u eq
