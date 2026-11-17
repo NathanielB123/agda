@@ -38,6 +38,7 @@ import Agda.Utils.Size
 import qualified Agda.Utils.SmallSet as SmallSet
 import qualified Agda.Utils.VarSet as VarSet
 import Agda.Utils.VarSet (VarSet)
+import Agda.TypeChecking.ProjectionLike (computeDefType)
 
 -- | Turn a term into a non-linear pattern, treating the
 --   free variables as pattern variables.
@@ -198,7 +199,9 @@ instance PatternFrom Term NLPat where
           [x]     | f == lsuc -> done
           [x , y] | f == lmax -> done
           _                   -> do
-            ft <- defType <$> getConstInfo f
+            -- 'f' could be a projection-like function so we need to compute
+            -- its type (see "LocalAndSmartRewrite2").
+            ft <- computeDefType f es
             PDef f <$> patternFrom r1 r1 k0 k1 (ft , Def f) es
       (_ , Con c ci vs) | isAlwaysSing r1 -> done
       (_ , Con c ci vs) -> do
