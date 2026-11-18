@@ -503,7 +503,9 @@ checkRewriteRule eq@(LocalEquation gamma1 lhs rhs b) s = do
   -- 2017-06-18, Jesper: Unfold inlined definitions on the LHS.
   -- This is necessary to replace copies created by imports by their
   -- original definition.
-  lhs <- modifyAllowedReductions (const $ SmallSet.singleton InlineReductions) $ reduce lhs
+  lhs <- addContext gamma1 $
+    modifyAllowedReductions (const $ SmallSet.singleton InlineReductions) $
+    reduce lhs
 
   let rewGamma = if isLocalRewrite s then gamma1 else gamma
       telStart = size rewGamma

@@ -28,7 +28,6 @@ import Agda.TypeChecking.Names
 import Agda.TypeChecking.Pretty
 import Agda.TypeChecking.Primitive hiding (Nat)
 import Agda.TypeChecking.Reduce
-import Agda.TypeChecking.Rules.LHS.Unify (recheckLocalRewrites)
 import Agda.TypeChecking.Substitute
 import Agda.TypeChecking.Telescope
 import Agda.TypeChecking.Telescope.Path
