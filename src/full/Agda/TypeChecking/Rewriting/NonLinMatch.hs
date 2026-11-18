@@ -400,8 +400,8 @@ instance Match NLPat Term where
         -- matching against)
         Var i' es |  (i < size k && i == i')
                   || (i >= size k && i == i' + size gamma) -> do
-          ti <- addContext gamma $ addContext k $ typeOfBV i
-          match r gamma k (ti , Var i) ps es
+          ti' <- addContext k $ typeOfBV i'
+          match r gamma k (ti' , Var i') ps es
         _ | Pi a b <- unEl t -> do
           let ai    = domInfo a
               pbody = PBoundVar (1 + i) $ raise 1 ps ++! [ Apply $ Arg ai $ PTerm $ var 0 ]
