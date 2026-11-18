@@ -117,6 +117,7 @@ inTopContext cont =
 unsafeInTopContext :: (MonadTCEnv m, ReadTCState m) => m a -> m a
 unsafeInTopContext cont =
   locallyScope scopeLocals (const []) $
+  locallyTC eLocalRewriteRules (const empty) $
     unsafeModifyContext (const CxEmpty) cont
 
 -- | Delete the last @n@ bindings from the context.
