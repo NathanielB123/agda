@@ -27,6 +27,7 @@ import Agda.TypeChecking.Reduce
 import Agda.TypeChecking.Substitute
 import Agda.TypeChecking.Telescope
 import Agda.TypeChecking.Primitive.Cubical.Base
+import Agda.TypeChecking.ProjectionLike (computeDefType)
 
 import Agda.Utils.Functor
 import Agda.Utils.Impossible
@@ -38,7 +39,6 @@ import Agda.Utils.Size
 import qualified Agda.Utils.SmallSet as SmallSet
 import qualified Agda.Utils.VarSet as VarSet
 import Agda.Utils.VarSet (VarSet)
-import Agda.TypeChecking.ProjectionLike (computeDefType)
 
 -- | Turn a term into a non-linear pattern, treating the
 --   free variables as pattern variables.
@@ -200,7 +200,7 @@ instance PatternFrom Term NLPat where
           [x , y] | f == lmax -> done
           _                   -> do
             -- 'f' could be a projection-like function so we need to compute
-            -- its type (see "LocalAndSmartRewrite2").
+            -- its type (see "SmartRewriteProjLike.agda")
             ft <- computeDefType f es
             PDef f <$> patternFrom r1 r1 k0 k1 (ft , Def f) es
       (_ , Con c ci vs) | isAlwaysSing r1 -> done

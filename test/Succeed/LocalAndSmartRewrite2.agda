@@ -1,31 +1,39 @@
-{-# OPTIONS --local-rewriting --smart-with --prop --show-irrelevant #-}
+{-# OPTIONS --local-rewriting --smart-with --show-implicit #-}
 
 open import Agda.Builtin.Equality
 import Agda.Builtin.Equality.Rewrite
+open import Agda.Builtin.Sigma
 
-infix 4 _≡ᴾ_
-data _≡ᴾ_ {ℓ} {A : Set ℓ} (x : A) : A → Prop ℓ where
-  refl : x ≡ᴾ x
-
-postulate
-  ↑≡ : ∀ {ℓ} {A : Set ℓ} (x y : A) → x ≡ᴾ y → x ≡ y
+module LocalAndSmartRewrite2 where
 
 module _ (Ob : Set) (Hom : Ob → Ob → Set)
          (id : ∀ {x} → Hom x x)
          (_⨾_ : ∀ {x y z} → Hom y x → Hom z y → Hom z x)
- where
+         (@rewrite ⨾⨾  : ∀ {W V U T} {f : Hom V W} {g : Hom U V} {h : Hom T U}
+                       → (f ⨾ g) ⨾ h ≡ f ⨾ (g ⨾ h))
+  where
 
-  record Psh : Set₁ where
+  variable
+    W V U : Ob
+    φ ψ : Hom _ _
+
+  record Ctx : Set₁ where
     field
       El   : Ob → Set
-      _⟨_⟩ : ∀ {W V} → El W → Hom V W → El V
-      ⟨id⟩ : ∀ {W} x → x ⟨ id {W} ⟩ ≡ᴾ x
+      -- "Restriction"
+      _⟨_⟩ : El W → Hom V W → El V
+      -- Laws
+      ⟨id⟩ : ∀ x → x ⟨ id {W} ⟩ ≡ x
+  open Ctx
 
-  module _ (Γ : Psh) (X : Set) (open Psh Γ) where
-    ID : Psh
-    ID .Psh.El   W   = El W
-    ID .Psh._⟨_⟩ ρ φ
-      = ρ ⟨ φ ⟩
-    ID .Psh.⟨id⟩ ρ
-      rewrite ↑≡ (ρ ⟨ id ⟩) ρ (⟨id⟩ ρ)
+  module _ (Γ : Ctx)
+           (Δ : Ctx)
+           (let module Γ = Ctx Γ)
+           (let module Δ = Ctx Δ) where
+    _*_ : Ctx
+    _*_ .El   W         = Σ (Γ.El W) λ _ → Δ.El W
+    _*_ ._⟨_⟩ (ρ , γ) φ = (ρ Γ.⟨ φ ⟩ , γ Δ.⟨ φ ⟩)
+    _*_ .⟨id⟩ (ρ , γ)
+      rewrite Γ.⟨id⟩ ρ
+      rewrite Δ.⟨id⟩ γ
       = refl
