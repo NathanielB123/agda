@@ -790,7 +790,7 @@ instance Pretty OptionWarning where
       [ "Option", option old, "is deprecated, please use", option new, "instead" ]
     WarningProblem err -> pretty (prettyWarningModeError err) <+> "See --help=warning."
     LocalRewritingConfluenceCheck -> fsep $ pwords "Confluence checking (--confluence-check or --local-confluence-check) is not yet implemented for local rewrite rules (--local-rewriting)"
-    SmartWithCubical -> fsep $ pwords "Smart with (--smart-with) is not yet supported for Cubical Agda (--cubical or --cubical-compatible). Matching on indexed datatypes will probably hit errors."
+    SmartWithCubical -> fsep $ pwords "The combination of smart with (--smart-with) and Cubical Agda (--cubical or --cubical-compatible) is currently unsupported."
     where
     option = text . ("--" ++)
 

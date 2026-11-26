@@ -2079,8 +2079,8 @@ instance NFData RewriteAnn where
 
 instance Pretty RewriteAnn where
   pretty = \case
-    (IsRewrite _ RewInvalidated) -> "@rewrite (invalidated!)"
-    (IsRewrite _ RewDropped)     -> "@rewrite (dropped!)"
+    (IsRewrite _ RewInvalidated) -> "@rewrite (invalidated)"
+    (IsRewrite _ RewDropped)     -> "@rewrite (dropped)"
     (IsRewrite _ RewFine)        -> "@rewrite"
     IsNotRewrite                 -> empty
 

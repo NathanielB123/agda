@@ -187,12 +187,12 @@ prettyIllegal q reason = do
 
     SmartWithOccursFail -> (fsep . concat)
       [ illegalSince q
-      , pwords "the left-hand side occurs somewhere in an earlier '--smart-with' rewrite rule"
+      , pwords "the left-hand side occurs in the right-hand side or an earlier '--smart-with' rewrite rule"
       ]
 
 instance PrettyTCM SerialisableRewriteOrigin where
   prettyTCM = \case
-    LocalRewrite (LocalRewriteInfo o g n t) ->
+    LocalRewrite _ (LocalRewriteInfo o g n t) ->
       maybe "_" prettyTCM n <+> ":" <+> addContext g (prettyTCM t)
     GlobalRewrite q -> prettyTCM q
 

@@ -258,13 +258,15 @@ instance EmbPrj Context where
 
 instance EmbPrj SerialisableRewriteOrigin where
   icod_ = \case
-    LocalRewrite  a -> icodeN 0 LocalRewrite a
-    GlobalRewrite a -> icodeN 1 GlobalRewrite a
+    LocalRewrite  a b -> icodeN 0 LocalRewrite a b
+    GlobalRewrite a   -> icodeN 1 GlobalRewrite a
 
   value = vcase $ \case
-    N2 0 a -> valuN LocalRewrite a
-    N2 1 a -> valuN GlobalRewrite a
-    _      -> malformed
+    N3 0 a b -> valuN LocalRewrite a b
+    N2 1 a   -> valuN GlobalRewrite a
+    _        -> malformed
+
+instance EmbPrj RecheckingLocalRewrite
 
 instance EmbPrj LocalRewriteInfo where
   icod_ (LocalRewriteInfo a b c d) = icodeN 0 LocalRewriteInfo a b c d

@@ -1,0 +1,10 @@
+SmartWithUIP2.agda:26.15-17: error: [InvalidatedLocalRewriteRule]
+Local rewrite rule invalidated after a pattern match:
+
+  _ : hide ⟨⟩ x ≡ w  is not a legal (--smart-with) rewrite rule,
+  since the left-hand side
+    hide ⟨⟩ x
+  reduces to
+    x
+
+when checking that the pattern ⟨⟩ has type Unit

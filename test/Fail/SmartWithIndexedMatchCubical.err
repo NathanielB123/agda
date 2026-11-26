@@ -1,17 +1,36 @@
-SmartWithIndexedMatchCubical.agda:1.1-50: warning: -W[no]SmartWithCubical
-Smart with (--smart-with) is not yet supported for Cubical Agda
-(--cubical or --cubical-compatible). Matching on indexed datatypes
-will probably hit errors.
+AGDA_UNEXPECTED_SUCCESS
 
-SmartWithIndexedMatchCubical.agda:19.1-32: warning: -W[no]RewriteContainsIntervalVariables
-_ : p ≡ Agda.Primitive.Cubical.primHComp u a  is not a legal
-(--smart-with) rewrite rule, since the following interval variable
-is present:
-  φ
-when checking the definition of
-SmartWithIndexedMatchCubical.-invert14
-
-SmartWithIndexedMatchCubical.agda:19.1-32: error: [InvalidatedLocalRewriteRule]
-Local rewrite rule invalidated after a pattern-match
-when checking the definition of
-SmartWithIndexedMatchCubical.-invert14
+ret > ExitSuccess
+out >
+out > SmartWithIndexedMatchCubical.agda:1.1-50: warning: -W[no]SmartWithCubical
+out > The combination of smart with (--smart-with) and Cubical Agda
+out > (--cubical or --cubical-compatible) is currently unsupported.
+out >
+out > SmartWithIndexedMatchCubical.agda:22.1-30: warning: -W[no]UnsupportedIndexedMatch
+out > This clause uses pattern-matching features that are not yet
+out > supported by Cubical Agda, the function to which it belongs will
+out > not compute when applied to transports.
+out >
+out > Reason: It relies on injectivity of the data constructor true,
+out >         which is not yet supported
+out >
+out > when checking the definition of
+out > SmartWithIndexedMatchCubical.-invert22
+out >
+out > ———— All done; warnings encountered ————————————————————————
+out >
+out > SmartWithIndexedMatchCubical.agda:1.1-50: warning: -W[no]SmartWithCubical
+out > The combination of smart with (--smart-with) and Cubical Agda
+out > (--cubical or --cubical-compatible) is currently unsupported.
+out >
+out > SmartWithIndexedMatchCubical.agda:22.1-30: warning: -W[no]UnsupportedIndexedMatch
+out > This clause uses pattern-matching features that are not yet
+out > supported by Cubical Agda, the function to which it belongs will
+out > not compute when applied to transports.
+out >
+out > Reason: It relies on injectivity of the data constructor true,
+out >         which is not yet supported
+out >
+out > when checking the definition of
+out > SmartWithIndexedMatchCubical.-invert22
+out >

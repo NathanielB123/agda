@@ -1,10 +1,8 @@
-SmartRewriteInfiniteBranchLoop2.agda:25.1-8: warning: -W[no]RewriteLHSSubterm
-_ : x .app 0 ≡ b x  is not a legal rewrite rule, since the
-left-hand side of a rewrite rule introduced by with/rewrite is a
-structural subterm of the right-hand side (which can cause
-non-termination)
-when checking that the pattern refl has type x .app 0 ≡ b x
-
 SmartRewriteInfiniteBranchLoop2.agda:25.1-8: error: [InvalidatedLocalRewriteRule]
-Local rewrite rule invalidated after a pattern-match
+Local rewrite rule invalidated after a pattern match:
+
+  _ : x .app 0 ≡ b x  is not a legal (--smart-with) rewrite rule,
+  since the right-hand side contains closures (lambdas or
+  underapplied functions)
+
 when checking that the pattern refl has type x .app 0 ≡ b x

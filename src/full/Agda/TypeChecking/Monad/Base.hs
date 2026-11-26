@@ -6257,25 +6257,36 @@ data LocalRewriteInfo = LocalRewriteInfo
   }
   deriving (Show, Generic)
 
+-- | Boolean for whether we are checking a local rewrite rule for the first-time
+--   or we are rechecking after a substitution (rewrite invalidity is a warning
+--   in the former case, but a hard error in the latter)
+data RecheckingLocalRewrite = NotRechecking | AreRechecking
+  deriving (Show, Generic, Enum, Bounded)
+
 -- | Origin of the rewrite rule
 --   Parameterised by the info for global rewrite rules (it is convenient
 --   to remember the definition during checking, but when serialising we just
 --   store the 'QName')
 data RewriteOrigin' a
   = GlobalRewrite a
-  | LocalRewrite LocalRewriteInfo
+  | LocalRewrite RecheckingLocalRewrite LocalRewriteInfo
   deriving (Show, Generic, Functor)
 
 type RewriteOrigin = RewriteOrigin' Definition
 type SerialisableRewriteOrigin = RewriteOrigin' QName
 
 isLocalRewrite :: RewriteOrigin' a -> Bool
-isLocalRewrite (LocalRewrite  _) = True
-isLocalRewrite (GlobalRewrite _) = False
+isLocalRewrite (LocalRewrite  _ _) = True
+isLocalRewrite (GlobalRewrite _)   = False
+
+areRechecking :: RewriteOrigin' a -> Bool
+areRechecking (GlobalRewrite _)              = False
+areRechecking (LocalRewrite NotRechecking _) = False
+areRechecking (LocalRewrite AreRechecking _) = True
 
 isSmartWithRewrite :: RewriteOrigin' a -> Bool
-isSmartWithRewrite (LocalRewrite i)  = lrewSmartWith $ lrewInfoOrigin i
-isSmartWithRewrite (GlobalRewrite _) = False
+isSmartWithRewrite (LocalRewrite _ i) = lrewSmartWith $ lrewInfoOrigin i
+isSmartWithRewrite (GlobalRewrite _)  = False
 
 data RewriteLHSNotNeutralReason
   = LHSConstructorHeaded
@@ -7627,6 +7638,7 @@ instance NFData ClashingName
 instance NFData InvalidFileNameReason
 instance NFData LHSOrPatSyn
 instance NFData InductionAndEta
+instance NFData RecheckingLocalRewrite
 instance NFData SerialisableRewriteOrigin
 instance NFData LocalRewriteInfo
 instance NFData RewriteLHSNotNeutralReason

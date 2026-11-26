@@ -1,23 +1,32 @@
-SmartWithUIP.agda:28.1-27: warning: -W[no]RewriteLHSReduces
-_ : hide ⟨⟩ x ≡ x  is not a legal rewrite rule, since the left-hand
-side
-  hide ⟨⟩ x
-reduces to
-  x
-when checking that the pattern refl has type u ≡ ⟨⟩
+AGDA_UNEXPECTED_SUCCESS
 
-SmartWithUIP.agda:28.1-29.36: warning: -W[no]SmartWithOccursFail
-_ : u ≡ w  is not a legal rewrite rule, since the LHS occurs in the
-RHS or an earlier '--smart-with' rewrite rule
-when checking that the clause
-SmartWithUIP.-rewrite58 {_} {x = x} u eq _ refl rewrite unitp u
-  = refl
-has type
-{x.A : Set} {x : x.A} (u : Unit) (eq : hide u x ≡ x) (w : x.A)
-{@rewrite w-eq : hide u x ≡ w} (prf : hide u x ≡ x)
-{@rewrite prf-eq : eq ≡ prf} →
-PathOver (λ v → hide v x ≡ x) (unitp u) eq refl
-
-SmartWithUIP.agda:28.1-27: error: [InvalidatedLocalRewriteRule]
-Local rewrite rule invalidated after a pattern-match
-when checking that the pattern refl has type u ≡ ⟨⟩
+ret > ExitSuccess
+out >
+out > SmartWithUIP.agda:25.1-26.36: warning: -W[no]SmartWithOccursFail
+out > _ : u ≡ w  is not a legal (--smart-with) rewrite rule, since the
+out > left-hand side occurs in the right-hand side or an earlier
+out > '--smart-with' rewrite rule
+out > when checking that the clause
+out > SmartWithUIP.-rewrite48 {_} {x = x} u eq _ refl rewrite unitp u
+out >   = refl
+out > has type
+out > {x.A : Set} {x : x.A} (u : Unit) (eq : hide u x ≡ x) (w : x.A)
+out > {@rewrite w-eq : hide u x ≡ w} (prf : hide u x ≡ x)
+out > {@rewrite prf-eq : eq ≡ prf} →
+out > PathOver (λ v → hide v x ≡ x) (unitp u) eq refl
+out >
+out > ———— All done; warnings encountered ————————————————————————
+out >
+out > SmartWithUIP.agda:25.1-26.36: warning: -W[no]SmartWithOccursFail
+out > _ : u ≡ w  is not a legal (--smart-with) rewrite rule, since the
+out > left-hand side occurs in the right-hand side or an earlier
+out > '--smart-with' rewrite rule
+out > when checking that the clause
+out > SmartWithUIP.-rewrite48 {_} {x = x} u eq _ refl rewrite unitp u
+out >   = refl
+out > has type
+out > {x.A : Set} {x : x.A} (u : Unit) (eq : hide u x ≡ x) (w : x.A)
+out > {@rewrite w-eq : hide u x ≡ w} (prf : hide u x ≡ x)
+out > {@rewrite prf-eq : eq ≡ prf} →
+out > PathOver (λ v → hide v x ≡ x) (unitp u) eq refl
+out >

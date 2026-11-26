@@ -361,10 +361,8 @@ recheckLocalRewrites (ExtendTel x xs) = do
 -- | Recheck a local rewrite rule
 recheckRewDom :: LocalRewriteInfo -> RewDom -> TCM RewDom
 recheckRewDom i d = do
-  rew <- checkLocalRewriteRule i $ rewDomEq d
-  case rew of
-    Right rew' -> pure $ d { rewDomRew = pure rew' }
-    Left  r    -> invalidatedRule (LocalRewrite i) r
+  rew <- checkLocalRewriteRule AreRechecking i $ rewDomEq d
+  pure $ d { rewDomRew = pure $ fromMaybe __IMPOSSIBLE__ rew }
 
 type UnifyStrategy = UnifyState -> ListT TCM UnifyStep
 

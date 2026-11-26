@@ -662,19 +662,19 @@ defaultAddLetBinding' isAxiom o x v t ret = do
     vt <- makeOpen $ LetBinding isAxiom o v t
     localTC (over eLetBindings (Map.insert x vt)) ret
 
-type ExceptIllegalTCM a =
-  ExceptT IllegalRewriteRuleReason TCM a
+-- | If a rewrite rule turns out to be invalid, we either raise a warning (if
+--   we are checking it for the first time), or hard error (if we are
+--   rechecking a local rewrite rule after a substitution)
+illegalRule :: MonadWarning m => RewriteOrigin -> IllegalRewriteRuleReason
+            -> MaybeT m a
+illegalRule s r
+  | areRechecking s = typeError $ InvalidatedLocalRewriteRule (defName <$> s) r
+  | otherwise       = warnRule s r >> mzero
 
--- | Warn about an illegal rewrite rule
-illegalRuleWarn ::
-  MonadWarning m => RewriteOrigin -> IllegalRewriteRuleReason -> m ()
-illegalRuleWarn s r = warning $ IllegalRewriteRule (defName <$> s) r
-
--- | We hard error on local rewrite rules invalidated by pattern matching to
---   avoid continuing in ill-typed contexts
-invalidatedRule :: MonadTCError m =>
-  RewriteOrigin -> IllegalRewriteRuleReason -> m a
-invalidatedRule s r = typeError $ InvalidatedLocalRewriteRule (defName <$> s) r
+-- | Warn about a rewrite rule
+warnRule :: MonadWarning m => RewriteOrigin -> IllegalRewriteRuleReason
+            -> m ()
+warnRule s r = warning (IllegalRewriteRule (defName <$> s) r)
 
 -- | Add a let bound variable.
 {-# INLINE addLetBinding #-}

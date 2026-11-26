@@ -1,7 +1,6 @@
 SmartWithInterval.agda:1.1-39: warning: -W[no]SmartWithCubical
-Smart with (--smart-with) is not yet supported for Cubical Agda
-(--cubical or --cubical-compatible). Matching on indexed datatypes
-will probably hit errors.
+The combination of smart with (--smart-with) and Cubical Agda
+(--cubical or --cubical-compatible) is currently unsupported.
 
 SmartWithInterval.agda:33.1-35.52: warning: -W[no]RewriteContainsIntervalVariables
 _ : p i Agda.Builtin.Equality.≡ w  is not a legal (--smart-with)
