@@ -1,0 +1,8 @@
+SmartRewriteIndirectLoop.agda:8.1-10: error: [InvalidatedLocalRewriteRule]
+Local rewrite rule invalidated after a pattern match:
+
+  _ : f x ≡ (λ y → f y y)  is not a legal (--smart-with) rewrite
+  rule, since the right-hand side contains closures (lambdas or
+  underapplied functions)
+
+when checking that the pattern refl has type f x ≡ (λ y → f y y)

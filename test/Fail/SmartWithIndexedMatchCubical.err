@@ -1,0 +1,36 @@
+AGDA_UNEXPECTED_SUCCESS
+
+ret > ExitSuccess
+out >
+out > SmartWithIndexedMatchCubical.agda:1.1-50: warning: -W[no]SmartWithCubical
+out > The combination of smart with (--smart-with) and Cubical Agda
+out > (--cubical or --cubical-compatible) is currently unsupported.
+out >
+out > SmartWithIndexedMatchCubical.agda:22.1-30: warning: -W[no]UnsupportedIndexedMatch
+out > This clause uses pattern-matching features that are not yet
+out > supported by Cubical Agda, the function to which it belongs will
+out > not compute when applied to transports.
+out >
+out > Reason: It relies on injectivity of the data constructor true,
+out >         which is not yet supported
+out >
+out > when checking the definition of
+out > SmartWithIndexedMatchCubical.-invert22
+out >
+out > ———— All done; warnings encountered ————————————————————————
+out >
+out > SmartWithIndexedMatchCubical.agda:1.1-50: warning: -W[no]SmartWithCubical
+out > The combination of smart with (--smart-with) and Cubical Agda
+out > (--cubical or --cubical-compatible) is currently unsupported.
+out >
+out > SmartWithIndexedMatchCubical.agda:22.1-30: warning: -W[no]UnsupportedIndexedMatch
+out > This clause uses pattern-matching features that are not yet
+out > supported by Cubical Agda, the function to which it belongs will
+out > not compute when applied to transports.
+out >
+out > Reason: It relies on injectivity of the data constructor true,
+out >         which is not yet supported
+out >
+out > when checking the definition of
+out > SmartWithIndexedMatchCubical.-invert22
+out >

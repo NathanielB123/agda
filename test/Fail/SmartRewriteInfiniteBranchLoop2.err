@@ -1,0 +1,8 @@
+SmartRewriteInfiniteBranchLoop2.agda:25.1-8: error: [InvalidatedLocalRewriteRule]
+Local rewrite rule invalidated after a pattern match:
+
+  _ : x .app 0 ≡ b x  is not a legal (--smart-with) rewrite rule,
+  since the right-hand side contains closures (lambdas or
+  underapplied functions)
+
+when checking that the pattern refl has type x .app 0 ≡ b x

@@ -1,0 +1,20 @@
+SmartWithUIP3.agda:25.1-26.32: warning: -W[no]SmartWithOccursFail
+_ : u ≡ w  is not a legal (--smart-with) rewrite rule, since the
+left-hand side occurs in the right-hand side or an earlier
+'--smart-with' rewrite rule
+when checking that the clause
+SmartWithUIP3.-rewrite48 {_} {x = x} u eq _ refl with ⟨⟩ <- u
+  = refl
+has type
+{x.A : Set} {x : x.A} (u : Unit) (eq : hide u x ≡ x) (w : x.A)
+{@rewrite w-eq : hide u x ≡ w} (prf : hide u x ≡ x)
+{@rewrite prf-eq : eq ≡ prf} →
+PathOver (λ v → hide v x ≡ x) (unitp u) eq refl
+
+SmartWithUIP3.agda:26.28-32: error: [UnequalTypes]
+The type
+  _x_56 ≡ _x_56
+is not a subtype of
+  PathOver (λ v → hide v x ≡ x) (unitp u) eq₁ refl
+when checking that the expression refl has type
+PathOver (λ v → hide v x ≡ x) (unitp u) eq₁ refl

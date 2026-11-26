@@ -1,0 +1,10 @@
+
+SmartWithBoundary2.agda:2.1-29: warning: -W[no]SmartWithCubical
+The combination of smart with (--smart-with) and Cubical Agda
+(--cubical or --cubical-compatible) is currently unsupported.
+
+———— All done; warnings encountered ————————————————————————
+
+SmartWithBoundary2.agda:2.1-29: warning: -W[no]SmartWithCubical
+The combination of smart with (--smart-with) and Cubical Agda
+(--cubical or --cubical-compatible) is currently unsupported.

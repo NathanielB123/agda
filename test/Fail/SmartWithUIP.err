@@ -1,0 +1,32 @@
+AGDA_UNEXPECTED_SUCCESS
+
+ret > ExitSuccess
+out >
+out > SmartWithUIP.agda:25.1-26.36: warning: -W[no]SmartWithOccursFail
+out > _ : u ≡ w  is not a legal (--smart-with) rewrite rule, since the
+out > left-hand side occurs in the right-hand side or an earlier
+out > '--smart-with' rewrite rule
+out > when checking that the clause
+out > SmartWithUIP.-rewrite48 {_} {x = x} u eq _ refl rewrite unitp u
+out >   = refl
+out > has type
+out > {x.A : Set} {x : x.A} (u : Unit) (eq : hide u x ≡ x) (w : x.A)
+out > {@rewrite w-eq : hide u x ≡ w} (prf : hide u x ≡ x)
+out > {@rewrite prf-eq : eq ≡ prf} →
+out > PathOver (λ v → hide v x ≡ x) (unitp u) eq refl
+out >
+out > ———— All done; warnings encountered ————————————————————————
+out >
+out > SmartWithUIP.agda:25.1-26.36: warning: -W[no]SmartWithOccursFail
+out > _ : u ≡ w  is not a legal (--smart-with) rewrite rule, since the
+out > left-hand side occurs in the right-hand side or an earlier
+out > '--smart-with' rewrite rule
+out > when checking that the clause
+out > SmartWithUIP.-rewrite48 {_} {x = x} u eq _ refl rewrite unitp u
+out >   = refl
+out > has type
+out > {x.A : Set} {x : x.A} (u : Unit) (eq : hide u x ≡ x) (w : x.A)
+out > {@rewrite w-eq : hide u x ≡ w} (prf : hide u x ≡ x)
+out > {@rewrite prf-eq : eq ≡ prf} →
+out > PathOver (λ v → hide v x ≡ x) (unitp u) eq refl
+out >

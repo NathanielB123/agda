@@ -1,4 +1,4 @@
-{-# OPTIONS --local-rewriting #-}
+{-# OPTIONS --local-rewriting --rewriting #-}
 
 open import Agda.Builtin.Nat
 open import Agda.Builtin.Equality

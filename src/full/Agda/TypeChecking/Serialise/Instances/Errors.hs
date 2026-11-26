@@ -256,15 +256,26 @@ instance EmbPrj Context where
     N2 0 a -> valuN Context a
     _      -> malformed
 
-instance EmbPrj SerialisableRewriteSource where
+instance EmbPrj SerialisableRewriteOrigin where
   icod_ = \case
-    LocalRewrite a b c -> icodeN 0 LocalRewrite a b c
-    GlobalRewrite a    -> icodeN 1 GlobalRewrite a
+    LocalRewrite  a b -> icodeN 0 LocalRewrite a b
+    GlobalRewrite a   -> icodeN 1 GlobalRewrite a
 
   value = vcase $ \case
-    N4 0 a b c -> valuN LocalRewrite a b c
-    N2 1 a     -> valuN GlobalRewrite a
-    _          -> malformed
+    N3 0 a b -> valuN LocalRewrite a b
+    N2 1 a   -> valuN GlobalRewrite a
+    _        -> malformed
+
+instance EmbPrj RecheckingLocalRewrite
+
+instance EmbPrj LocalRewriteInfo where
+  icod_ (LocalRewriteInfo a b c d) = icodeN 0 LocalRewriteInfo a b c d
+
+  value = vcase $ \case
+    N5 0 a b c d -> valuN LocalRewriteInfo a b c d
+    _            -> malformed
+
+instance EmbPrj RewriteLHSNotNeutralReason
 
 instance EmbPrj IllegalRewriteRuleReason where
   icod_ = \case
@@ -285,6 +296,10 @@ instance EmbPrj IllegalRewriteRuleReason where
     BeforeMutualFunctionDefinition a            -> icodeN 14 BeforeMutualFunctionDefinition a
     DuplicateRewriteRule                        -> icodeN 15 DuplicateRewriteRule
     LocalRewriteOutsideTelescope                -> icodeN 16 LocalRewriteOutsideTelescope
+    SmartWithOccursFail                         -> icodeN 17 SmartWithOccursFail
+    LHSNotNeutral a                             -> icodeN 18 LHSNotNeutral a
+    RHSContainsClosures                         -> icodeN 19 RHSContainsClosures
+    IntervalVariablesPresent a                  -> icodeN 20 IntervalVariablesPresent a
 
   value = vcase $ \case
     N1 0     -> valuN LHSNotDefinitionOrConstructor
@@ -304,6 +319,10 @@ instance EmbPrj IllegalRewriteRuleReason where
     N2 14 a  -> valuN BeforeMutualFunctionDefinition a
     N1 15    -> valuN DuplicateRewriteRule
     N1 16    -> valuN LocalRewriteOutsideTelescope
+    N1 17    -> valuN SmartWithOccursFail
+    N2 18 a  -> valuN LHSNotNeutral a
+    N1 19    -> valuN RHSContainsClosures
+    N2 20 a  -> valuN IntervalVariablesPresent a
     _        -> malformed
 
 instance EmbPrj OptionWarning where
@@ -311,11 +330,13 @@ instance EmbPrj OptionWarning where
     OptionRenamed a b             -> icodeN 0 OptionRenamed a b
     WarningProblem a              -> icodeN 1 WarningProblem a
     LocalRewritingConfluenceCheck -> icodeN 2 LocalRewritingConfluenceCheck
+    SmartWithCubical              -> icodeN 3 SmartWithCubical
 
   value = vcase $ \case
     N3 0 a b -> valuN OptionRenamed a b
     N2 1 a   -> valuN WarningProblem a
     N1 2     -> valuN LocalRewritingConfluenceCheck
+    N1 3     -> valuN SmartWithCubical
     _        -> malformed
 
 instance EmbPrj WarningModeError where
@@ -580,6 +601,8 @@ instance EmbPrj PragmaOptions where
     (_optEraseRecordParameters o)
     (_optRewriting o)
     (_optLocalRewriting o)
+    (_optLocalRewriteMatches o)
+    (_optSmartWith o)
     (_optCubical o)
     (_optGuarded o)
     (_optFirstOrder o)
